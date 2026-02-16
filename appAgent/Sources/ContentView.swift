@@ -5,33 +5,36 @@ struct ContentView: View {
   @State private var showingNewProjectSheet = false
 
   var body: some View {
-    NavigationView {
+    NavigationStack {
       VStack(spacing: 0) {
         List {
           ForEach(projects) { project in
             NavigationLink(destination: ProjectDetailView(project: project)) {
               Text(project.projectName)
+                .font(.body)
+                .frame(height: 44, alignment: .leading)
             }
           }
         }
-        .listStyle(PlainListStyle())
-        .frame(maxHeight: .infinity) // List füllt den verfügbaren Raum
-        
+        .listStyle(.plain)
+        .layoutPriority(1)
+
         Button("Neues Projekt") {
           showingNewProjectSheet = true
         }
-        .padding()
-        .frame(maxWidth: .infinity) // Button horizontal strecken
+        .font(.body)
+        .frame(height: 44)
+        .padding(.horizontal)
+        .padding(.vertical, 6)
       }
-      .frame(maxWidth: .infinity, maxHeight: .infinity) // VStack füllt Bildschirm
       .navigationTitle("App-Generator")
       .sheet(isPresented: $showingNewProjectSheet) {
         NewProjectView(projects: $projects)
       }
+      .onAppear(perform: loadProjects)
     }
-    .onAppear(perform: loadProjects)
   }
-  
+
   func loadProjects() {
     let fm = FileManager.default
     let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!

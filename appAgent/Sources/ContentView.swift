@@ -6,7 +6,7 @@ struct ContentView: View {
 
   var body: some View {
     NavigationView {
-      VStack {
+      VStack(spacing: 0) {
         List {
           ForEach(projects) { project in
             NavigationLink(destination: ProjectDetailView(project: project)) {
@@ -14,12 +14,16 @@ struct ContentView: View {
             }
           }
         }
+        .listStyle(PlainListStyle())
+        .frame(maxHeight: .infinity) // List füllt den verfügbaren Raum
         
         Button("Neues Projekt") {
           showingNewProjectSheet = true
         }
         .padding()
+        .frame(maxWidth: .infinity) // Button horizontal strecken
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity) // VStack füllt Bildschirm
       .navigationTitle("App-Generator")
       .sheet(isPresented: $showingNewProjectSheet) {
         NewProjectView(projects: $projects)

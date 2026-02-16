@@ -10,12 +10,15 @@ struct ProjectDetailView: View {
   let kiService = KIService()
   
   var body: some View {
-    VStack(spacing: 20) {
+    VStack(spacing: 10) {
+      // Prompt-History horizontal scroll
       if !project.promptHistory.isEmpty {
         ScrollView(.horizontal, showsIndicators: true) {
-          HStack {
+          HStack(spacing: 8) {
             ForEach(project.promptHistory, id: \.self) { prompt in
-              Button(action: { userPrompt = prompt }) {
+              Button {
+                userPrompt = prompt
+              } label: {
                 Text(prompt)
                   .padding(6)
                   .background(Color.gray.opacity(0.2))
@@ -27,20 +30,26 @@ struct ProjectDetailView: View {
         }
       }
       
+      // TextEditor nimmt flexiblen Platz
       TextEditor(text: $userPrompt)
         .border(Color.gray, width: 1)
-        .frame(height: 150)
-        .padding()
+        .frame(minHeight: 150, maxHeight: 250)
+        .padding(.horizontal)
       
+      // Buttons
       HStack {
-        Button(action: { showingSettings.toggle() }) {
+        Button {
+          showingSettings.toggle()
+        } label: {
           Image(systemName: "gearshape")
         }
         .padding(.leading)
         
         Spacer()
         
-        Button(action: { Task { await generateProject() } }) {
+        Button {
+          Task { await generateProject() }
+        } label: {
           if isProcessing {
             ProgressView()
           } else {
@@ -50,17 +59,21 @@ struct ProjectDetailView: View {
         }
         .padding(.trailing)
       }
+      .padding(.horizontal)
       
+      // Statusmeldung
       if !statusMessage.isEmpty {
         Text(statusMessage)
           .foregroundColor(.blue)
-          .padding()
+          .padding(.horizontal)
       }
       
+      // FileListView flexibel
       FileListView(projectFolder: project.projectFolder)
-      
-      Spacer()
+        .frame(maxHeight: .infinity)
+        .padding(.horizontal)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe
     .navigationTitle(project.projectName)
     .sheet(isPresented: $showingSettings) {
       SettingsView()

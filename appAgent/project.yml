@@ -1,0 +1,40 @@
+name: appAgent
+options:
+  bundleIdPrefix: at.co.weinmann
+  deploymentTarget:
+    iOS: "16.0"
+  developmentRegion: en
+  automaticSchemes: true
+  createIntermediateGroups: true
+  lastUpgradeCheck: 1530
+  enableCodeCoverage: false
+
+configs:
+  Debug:
+    buildSettings:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+  Release:
+    buildSettings:
+      SWIFT_OPTIMIZATION_LEVEL: '-Owholemodule'
+
+targets:
+  appAgent:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    resources:
+      - Resources
+    settings:
+      base:
+        INFO_PLIST_FILE: Resources/Info.plist
+    dependencies: []
+
+schemes:
+  appAgent:
+    build:
+      targets:
+        appAgent:
+          buildTypes: all
+    run:
+      config: Debug

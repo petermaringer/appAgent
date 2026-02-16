@@ -5,7 +5,7 @@
   <key>CFBundleName</key>
   <string>appAgent</string>
   <key>CFBundleIdentifier</key>
-  <string>com.yourname.appAgent</string>
+  <string>at.co.weinmann.appAgent</string>
   <key>CFBundleVersion</key>
   <string>1.0</string>
   <key>CFBundleShortVersionString</key>

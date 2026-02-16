@@ -63,7 +63,7 @@ struct ProjectDetailView: View {
     }
     .navigationTitle(project.projectName)
     .sheet(isPresented: $showingSettings) {
-      SettingsView(projectEngine: project)
+      SettingsView()
     }
   }
   

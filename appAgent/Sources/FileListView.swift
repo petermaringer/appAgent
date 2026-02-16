@@ -45,9 +45,11 @@ struct FileListView: View {
     let fm = FileManager.default
     guard let folderContents = try? fm.contentsOfDirectory(at: projectFolder, includingPropertiesForKeys: nil) else { return }
     files = folderContents.filter { $0.pathExtension == "swift" }
+    
     if let lastModified = files.max(by: { f1, f2 in
-      (try? f1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate ?? .distantPast) <
-      (try? f2.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate ?? .distantPast)
+      let date1: Date = (try? f1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+      let date2: Date = (try? f2.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+      return date1 < date2
     }) {
       targetFile = lastModified
     }

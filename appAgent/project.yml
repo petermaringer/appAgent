@@ -25,9 +25,8 @@ targets:
       - Sources
     resources:
       - Resources
-    settings:
-      base:
-        INFO_PLIST_FILE: Resources/Info.plist
+    info:
+      path: Resources/Info.plist
     dependencies: []
 
 schemes:

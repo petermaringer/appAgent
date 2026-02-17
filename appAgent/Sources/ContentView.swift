@@ -4,37 +4,42 @@ struct ContentView: View {
   @State private var projects: [ProjectEngine] = []
   @State private var showingNewProjectSheet = false
 
- var body: some View {
-  NavigationStack {
-    VStack(spacing: 0) {
-      List {
-        ForEach(projects) { project in
-          NavigationLink(destination: ProjectDetailView(project: project)) {
-            Text(project.projectName)
-              .font(.body)
-              .frame(height: 44, alignment: .leading)
-          }
-        }
-      }
-      .listStyle(.plain)
+  var body: some View {
+    NavigationStack {
+      ZStack {
+        Color(.systemBackground).ignoresSafeArea() // Hintergrund füllt ganzen Screen
 
-      Button("Neues Projekti5") {
-        showingNewProjectSheet = true
+        VStack(spacing: 0) {
+          List {
+            ForEach(projects) { project in
+              NavigationLink(destination: ProjectDetailView(project: project)) {
+                Text(project.projectName)
+                  .font(.body)
+                  .frame(height: 44, alignment: .leading)
+              }
+            }
+          }
+          .listStyle(.plain)
+          .frame(maxHeight: .infinity) // List füllt den verfügbaren Platz
+
+          Button("Neues Projekt") {
+            showingNewProjectSheet = true
+          }
+          .font(.body)
+          .frame(height: 44)
+          .frame(maxWidth: .infinity)
+          .padding(.horizontal)
+          .padding(.vertical, 6)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
-      .font(.body)
-      .frame(height: 44)
-      .frame(maxWidth: .infinity)
-      .padding(.horizontal)
-      .padding(.vertical, 6)
+      .navigationTitle("App-Generator")
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .navigationTitle("App-Generator")
+    .sheet(isPresented: $showingNewProjectSheet) {
+      NewProjectView(projects: $projects)
+    }
+    .onAppear(perform: loadProjects)
   }
-  .sheet(isPresented: $showingNewProjectSheet) {
-    NewProjectView(projects: $projects)
-  }
-  .onAppear(perform: loadProjects)
-}
 
   func loadProjects() {
     let fm = FileManager.default

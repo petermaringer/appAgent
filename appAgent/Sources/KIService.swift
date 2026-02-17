@@ -2,8 +2,8 @@ import SwiftUI
 import Foundation
 
 class KIService: ObservableObject {
-  @AppStorage("openRouterAPIKey") private var apiKey: String = ""
-  @AppStorage("openRouterModel") private var model: String = "gpt-4.1-mini"
+  @AppStorage("openRouterAPIKey") private var apiKey: String = "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"
+  @AppStorage("openRouterModel") private var model: String = "arcee-ai/trinity-mini:free"
 
   func generateCode(prompt: String, context: String) async throws -> String {
     guard !apiKey.isEmpty else {

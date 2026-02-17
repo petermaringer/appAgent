@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard" version="3.0" toolsVersion="18122" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" colorMatched="YES">
+    <scenes>
+        <!--Launch Screen-->
+        <scene sceneID="launchScreenScene">
+            <objects>
+                <viewController id="VC" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="viewID" userInteractionEnabled="NO" multipleTouchEnabled="YES" translatesAutoresizingMaskIntoConstraints="NO">
+                        <rect key="frame" x="0.0" y="0.0" width="390" height="844"/>
+                        <color key="backgroundColor" red="0.5" green="0.0" blue="0.5" alpha="1" colorSpace="custom"/>
+                        <subviews>
+                            <label id="appNameLabel" userInteractionEnabled="NO" contentMode="center" text="appAgent" textAlignment="center" lineBreakMode="tailTruncation" adjustsFontSizeToFit="YES" minimumScaleFactor="0.5" fontDescription="System, 34" textColor="whiteColor" translatesAutoresizingMaskIntoConstraints="NO">
+                                <rect key="frame" x="0" y="0" width="390" height="44"/>
+                            </label>
+                        </subviews>
+                        <constraints>
+                            <constraint firstItem="appNameLabel" firstAttribute="centerX" secondItem="viewID" secondAttribute="centerX" id="centerX"/>
+                            <constraint firstItem="appNameLabel" firstAttribute="centerY" secondItem="viewID" secondAttribute="centerY" id="centerY"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="firstResponder" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+        </scene>
+    </scenes>
+</document>

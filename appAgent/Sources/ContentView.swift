@@ -18,7 +18,7 @@ struct ContentView: View {
       }
       .listStyle(.plain)
 
-      Button("Neues Projekt") {
+      Button("Neues Projekti5") {
         showingNewProjectSheet = true
       }
       .font(.body)

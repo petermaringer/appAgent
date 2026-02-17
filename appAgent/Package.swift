@@ -8,14 +8,19 @@ let package = Package(
         .iOS(.v16)
     ],
     products: [
-        // Das Modul, das die App bereitstellt
-        .executable(
+        // iOS-App-Produkt für SwiftUI, Team-ID übernimmt Bitrise
+        .iOSApplication(
             name: "appAgent",
-            targets: ["appAgent"]
+            targets: ["appAgent"],
+            bundleIdentifier: "at.co.weinmann.appAgent",
+            displayVersion: "1.0",
+            bundleVersion: "1",
+            iconAssetName: "AppIcon",
+            accentColorAssetName: "AccentColor"
         )
     ],
     dependencies: [
-        // Optional: hier könntest du weitere Swift-Pakete einbinden, z.B. für erweitertes Syntax-Highlighting
+        // Hier können weitere Swift-Pakete eingebunden werden
         // .package(url: "https://github.com/username/PackageName.git", from: "1.0.0"),
     ],
     targets: [

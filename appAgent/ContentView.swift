@@ -22,7 +22,7 @@ struct ContentView: View {
           .listStyle(.plain)
           .frame(maxHeight: .infinity) // List füllt den verfügbaren Platz
 
-          Button("Neues Projekt") {
+          Button("Neues Projekti") {
             showingNewProjectSheet = true
           }
           .font(.body)

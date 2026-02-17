@@ -22,9 +22,9 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Sources
+      - path: Sources
     resources:
-      - Resources
+      - path: Resources
     info:
       path: Resources/Info.plist
     dependencies: []

@@ -101,9 +101,9 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     codeView.attributedText = highlightedText(text)
     codeView.selectedRange = selectedRange
     
-    // Zeilennummern aktualisieren
+    // Zeilennummern aktualisieren – Korrektur für EnumeratedSequence
     let lines = text.components(separatedBy: "\n")
-    lineNumbersView.text = lines.enumerated().map { "\($0 + 1)" }.joined(separator: "\n")
+    lineNumbersView.text = lines.enumerated().map { index, _ in "\(index + 1)" }.joined(separator: "\n")
   }
   
   func makeCoordinator() -> Coordinator {

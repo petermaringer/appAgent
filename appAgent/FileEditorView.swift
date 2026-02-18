@@ -19,13 +19,23 @@ struct FileEditorView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
         .padding()
       
-      Button("Speichern & schließen") {
-        // Tastatur nur hier schließen
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        saveFile()
-        dismiss()
+      HStack {
+        // Tastatur manuell schließen
+        Button {
+          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        } label: {
+          Image(systemName: "keyboard.chevron.compact.down")
+        }
+        
+        Spacer()
+        
+        Button("Speichern & schließen") {
+          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+          saveFile()
+          dismiss()
+        }
       }
-      .padding()
+      .padding(.horizontal)
     }
     .padding()
     .onAppear(perform: loadFile)
@@ -90,6 +100,9 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     context.coordinator.updateLineNumbers()
     context.coordinator.applyHighlighting()
     
+    // Scroll synchronisieren
+    codeView.addObserver(context.coordinator, forKeyPath: "contentOffset", options: .new, context: nil)
+    
     return container
   }
   
@@ -128,6 +141,7 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
       let lines = codeView.text.components(separatedBy: "\n")
       lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
       
+      // Breite dynamisch anpassen
       let digits = max(3, String(lines.count).count)
       let sample = String(repeating: "8", count: digits) as NSString
       let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 16
@@ -149,7 +163,6 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
       let fullRange = NSRange(location: 0, length: textStorage.length)
       
       textStorage.beginEditing()
-      
       textStorage.setAttributes([
         .foregroundColor: UIColor.label,
         .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
@@ -170,6 +183,19 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
       
       textStorage.endEditing()
       codeView.selectedRange = selected
+    }
+    
+    // Scroll synchronisieren
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+      if keyPath == "contentOffset" {
+        if let codeView = codeView, let lineNumbersView = lineNumbersView {
+          lineNumbersView.contentOffset = codeView.contentOffset
+        }
+      }
+    }
+    
+    deinit {
+      codeView?.removeObserver(self, forKeyPath: "contentOffset")
     }
   }
 }

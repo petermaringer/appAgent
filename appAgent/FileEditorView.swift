@@ -69,7 +69,6 @@ struct FileEditorView: View {
 }
 
 // MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern
-// MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
@@ -112,13 +111,13 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-      editor?.setNeedsDisplay()
+      editor?.refresh()
     }
   }
 }
 
 
-// MARK: - LineNumberTextView (stabile Version)
+// MARK: - LineNumberTextView
 class LineNumberTextView: UIView {
 
   let textView = UITextView()
@@ -162,12 +161,16 @@ class LineNumberTextView: UIView {
   }
 
   func refresh() {
+    textView.layoutManager.ensureLayout(for: textView.textContainer)
     updateGutterWidth()
+    setNeedsLayout()
     setNeedsDisplay()
   }
 
   private func numberOfLines() -> Int {
-    return max(textView.text.components(separatedBy: "\n").count, 1)
+    let text = textView.text ?? ""
+    if text.isEmpty { return 1 }
+    return text.split(separator: "\n", omittingEmptySubsequences: false).count
   }
 
   private func updateGutterWidth() {
@@ -179,7 +182,6 @@ class LineNumberTextView: UIView {
     ]).width
 
     gutterWidth = width + gutterPadding
-    setNeedsLayout()
   }
 
   override func draw(_ rect: CGRect) {
@@ -187,7 +189,6 @@ class LineNumberTextView: UIView {
 
     guard let context = UIGraphicsGetCurrentContext() else { return }
 
-    // Hintergrund
     UIColor.secondarySystemBackground.setFill()
     context.fill(CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height))
 
@@ -219,7 +220,7 @@ class LineNumberTextView: UIView {
       if isRealLine {
 
         if NSIntersectionRange(lineRange, visibleRange).length > 0 {
-          let y = lineRect.minY + textView.textContainerInset.top - textView.contentOffset.y
+          let y = lineRect.minY - textView.contentOffset.y
 
           let numberString = "\(lineNumber)" as NSString
           let size = numberString.size(withAttributes: [.font: textView.font!])

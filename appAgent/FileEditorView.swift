@@ -4,6 +4,7 @@ struct FileEditorView: View {
   let fileURL: URL
   @Environment(\.dismiss) var dismiss
   @State private var codeText: String = ""
+  @State private var isKeyboardVisible: Bool = false
   
   private let keywords = ["let","var","func","struct","class","import","if","else","for","while","return","in","enum","extension","switch","case","default","break","guard","do","try","catch"]
 
@@ -20,11 +21,13 @@ struct FileEditorView: View {
         .padding()
       
       HStack {
-        // Tastatur manuell schließen
-        Button {
-          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        } label: {
-          Image(systemName: "keyboard.chevron.compact.down")
+        if isKeyboardVisible {
+          // Nur sichtbar, wenn Tastatur eingeblendet
+          Button {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+          } label: {
+            Image(systemName: "keyboard.chevron.compact.down")
+          }
         }
         
         Spacer()
@@ -38,7 +41,20 @@ struct FileEditorView: View {
       .padding(.horizontal)
     }
     .padding()
-    .onAppear(perform: loadFile)
+    .onAppear {
+      loadFile()
+      
+      // Keyboard Observers
+      NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillShowNotification, object: nil, queue: .main) { _ in
+        isKeyboardVisible = true
+      }
+      NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillHideNotification, object: nil, queue: .main) { _ in
+        isKeyboardVisible = false
+      }
+    }
+    .onDisappear {
+      NotificationCenter.default.removeObserver(self)
+    }
   }
   
   func loadFile() {
@@ -137,23 +153,25 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     
     func updateLineNumbers() {
   guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
-  
+
   let lines = codeView.text.components(separatedBy: "\n")
   lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
-  
-  // Dynamische Breite basierend auf der maximalen Zeilennummer
-  let maxLineNumber = lines.count
+
+  // Maximale Zeilenzahl berücksichtigen, mindestens 1
+  let maxLineNumber = max(lines.count, 1)
   let digits = String(maxLineNumber).count
   let sample = String(repeating: "8", count: digits) as NSString
-  let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 16 // Puffer
-  
+
+  // Breite plus Puffer
+  let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
+
   // Alte Width-Constraints entfernen
   lineNumbersView.constraints.filter { $0.firstAttribute == .width }.forEach { $0.isActive = false }
-  
+
   // Neue Constraint setzen
   lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
-  
-  // CodeView linken Inset anpassen
+
+  // CodeView-Inset anpassen
   codeView.textContainerInset.left = width + 4
 }
     

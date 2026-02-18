@@ -20,24 +20,24 @@ struct FileEditorView: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
         .padding()
       
-      HStack {
-        if isKeyboardVisible {
-          // Nur sichtbar, wenn Tastatur eingeblendet
-          Button {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-          } label: {
-            Image(systemName: "keyboard.chevron.compact.down")
-          }
-        }
-        
-        Spacer()
-        
-        Button("Speichern & schließen") {
-          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-          saveFile()
-          dismiss()
-        }
-      }
+     HStack {
+  Button {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+  } label: {
+    Image(systemName: "keyboard.chevron.compact.down")
+  }
+  .opacity(isKeyboardVisible ? 1 : 0)
+  .disabled(!isKeyboardVisible)
+  .animation(.easeInOut(duration: 0.25), value: isKeyboardVisible)
+
+  Spacer()
+
+  Button("Speichern & schließen") {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    saveFile()
+    dismiss()
+  }
+}
       .padding(.horizontal)
     }
     .padding()
@@ -81,7 +81,7 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     lineNumbersView.backgroundColor = UIColor.secondarySystemBackground
     lineNumbersView.isEditable = false
     lineNumbersView.isScrollEnabled = true
-    lineNumbersView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
+    lineNumbersView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 0)
     
     let codeView = UITextView()
     codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
@@ -152,26 +152,55 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     }
     
     func updateLineNumbers() {
-  guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
+  guard let codeView = codeView,
+        let lineNumbersView = lineNumbersView else { return }
 
-  let lines = codeView.text.components(separatedBy: "\n")
-  lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
+  guard let layoutManager = codeView.layoutManager else { return }
+  let textContainer = codeView.textContainer
+  let text = codeView.text as NSString
 
-  // Maximale Zeilenzahl berücksichtigen, mindestens 1
-  let maxLineNumber = max(lines.count, 1)
+  var lineNumber = 1
+  var lineNumberText = ""
+  var index = 0
+
+  while index < layoutManager.numberOfGlyphs {
+    var lineRange = NSRange()
+    layoutManager.lineFragmentRect(
+      forGlyphAt: index,
+      effectiveRange: &lineRange
+    )
+
+    let charRange = layoutManager.characterRange(
+      forGlyphRange: lineRange,
+      actualGlyphRange: nil
+    )
+
+    if charRange.location == 0 ||
+       text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n" {
+      lineNumberText += "\(lineNumber)"
+      lineNumber += 1
+    }
+
+    lineNumberText += "\n"
+    index = NSMaxRange(lineRange)
+  }
+
+  lineNumbersView.text = lineNumberText
+
+  // Breite weiterhin nach maximaler Zeilenzahl berechnen
+  let maxLineNumber = max(lineNumber - 1, 1)
   let digits = String(maxLineNumber).count
   let sample = String(repeating: "8", count: digits) as NSString
-
-  // Breite plus Puffer
   let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
 
-  // Alte Width-Constraints entfernen
-  lineNumbersView.constraints.filter { $0.firstAttribute == .width }.forEach { $0.isActive = false }
+  lineNumbersView.constraints
+    .filter { $0.firstAttribute == .width }
+    .forEach { $0.isActive = false }
 
-  // Neue Constraint setzen
-  lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
+  lineNumbersView.widthAnchor
+    .constraint(equalToConstant: width)
+    .isActive = true
 
-  // CodeView-Inset anpassen
   codeView.textContainerInset.left = width + 4
 }
     

@@ -111,8 +111,9 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 
 class EditorTextView: UITextView {
 
-  private let gutterWidth: CGFloat = 50
+  private var gutterWidth: CGFloat = 30
   private let gutterView = LineNumberGutterView()
+  private var lastLineCount: Int = 0
 
   override init(frame: CGRect, textContainer: NSTextContainer?) {
     super.init(frame: frame, textContainer: textContainer)
@@ -126,8 +127,8 @@ class EditorTextView: UITextView {
 
   private func commonInit() {
     backgroundColor = .clear
-    textContainerInset = UIEdgeInsets(top: 8, left: gutterWidth + 8, bottom: 8, right: 8)
     textContainer.lineFragmentPadding = 0
+    textContainerInset = UIEdgeInsets(top: 8, left: gutterWidth + 8, bottom: 8, right: 8)
 
     gutterView.textView = self
     addSubview(gutterView)
@@ -147,6 +148,7 @@ class EditorTextView: UITextView {
   func setText(_ newText: String, keywords: [String]) {
     text = newText
     applyHighlighting(keywords: keywords)
+    updateGutterWidth()
     gutterView.setNeedsDisplay()
   }
 
@@ -176,6 +178,25 @@ class EditorTextView: UITextView {
 
     storage.endEditing()
     selectedRange = selected
+    updateGutterWidth()
+  }
+
+  private func updateGutterWidth() {
+    let lineCount = max(text.components(separatedBy: "\n").count, 1)
+
+    if lineCount == lastLineCount { return }
+    lastLineCount = lineCount
+
+    let digits = String(lineCount).count
+    let sample = String(repeating: "8", count: digits) as NSString
+    let width = sample.size(withAttributes: [
+      .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    ]).width + 12
+
+    gutterWidth = max(width, 24)
+
+    textContainerInset.left = gutterWidth + 8
+    setNeedsLayout()
   }
 }
 
@@ -187,23 +208,22 @@ class LineNumberGutterView: UIView {
     guard let textView = textView else { return }
 
     UIColor.secondarySystemBackground.setFill()
-    UIRectFill(rect)
+    UIRectFill(bounds)
 
     let layoutManager = textView.layoutManager
     let textContainer = textView.textContainer
     layoutManager.ensureLayout(for: textContainer)
 
-    let visibleRect = CGRect(origin: textView.contentOffset,
-                             size: textView.bounds.size)
+    let visibleGlyphRange = layoutManager.glyphRange(
+      forBoundingRect: textView.bounds,
+      in: textContainer
+    )
 
-    let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect,
-                                              in: textContainer)
-
-    var glyphIndex = glyphRange.location
+    var glyphIndex = visibleGlyphRange.location
     var lineNumber = 1
     let text = textView.text as NSString
 
-    while glyphIndex < glyphRange.upperBound {
+    while glyphIndex < visibleGlyphRange.upperBound {
 
       var lineRange = NSRange()
       let lineRect = layoutManager.lineFragmentRect(
@@ -220,8 +240,6 @@ class LineNumberGutterView: UIView {
          text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n" {
 
         let y = lineRect.minY
-          - textView.contentOffset.y
-          + textView.textContainerInset.top
 
         let attributes: [NSAttributedString.Key: Any] = [
           .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
@@ -229,7 +247,7 @@ class LineNumberGutterView: UIView {
         ]
 
         "\(lineNumber)".draw(
-          at: CGPoint(x: 6, y: y),
+          at: CGPoint(x: 4, y: y),
           withAttributes: attributes
         )
 
@@ -245,7 +263,7 @@ class LineNumberGutterView: UIView {
         .foregroundColor: UIColor.secondaryLabel
       ]
 
-      "1".draw(at: CGPoint(x: 6, y: textView.textContainerInset.top),
+      "1".draw(at: CGPoint(x: 4, y: textView.textContainerInset.top),
                withAttributes: attributes)
     }
   }

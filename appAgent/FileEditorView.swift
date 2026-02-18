@@ -152,49 +152,27 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 func updateLineNumbers() {
   guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
 
-  let layoutManager = codeView.layoutManager
-  let textContainer = codeView.textContainer
-  let textStorage = codeView.textStorage
-  let text = textStorage.string as NSString
-  var lineNumberStrings: [String] = []
-
+  let text = codeView.text as NSString
   let lines = text.components(separatedBy: "\n")
-  var glyphIndex = 0
-  var currentLineNumber = 1
-
-  for line in lines {
-    // Alle Glyphs dieser echten Zeile bestimmen
-    let lineRange = NSRange(location: glyphIndex, length: line.count)
-    var fragmentIndex = 0
-
-    while fragmentIndex < lineRange.length {
-      let glyphRangePointer = UnsafeMutablePointer<NSRange>.allocate(capacity: 1)
-      defer { glyphRangePointer.deallocate() }
-
-      let lineRect = layoutManager.lineFragmentRect(
-        forGlyphAt: glyphIndex + fragmentIndex,
-        effectiveRange: glyphRangePointer
-      )
-
-      if fragmentIndex == 0 {
-        // Erste visuelle Zeile der echten Zeile → Zahl
-        lineNumberStrings.append("\(currentLineNumber)")
-      } else {
-        // Wrapped Zeilen → leer
-        lineNumberStrings.append("")
-      }
-
-      fragmentIndex = NSMaxRange(glyphRangePointer.pointee) - glyphIndex
+  
+  var lineNumberStrings: [String] = []
+  
+  for (index, line) in lines.enumerated() {
+    lineNumberStrings.append("\(index + 1)")
+    let layoutManager = codeView.layoutManager
+    let charRange = NSRange(location: 0, length: line.utf16.count)
+    var glyphIndex = layoutManager.glyphRange(forCharacterRange: charRange, actualCharacterRange: nil).location
+    let lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+    let numberOfWrappedLines = max(Int(lineRect.height / codeView.font!.lineHeight) - 1, 0)
+    for _ in 0..<numberOfWrappedLines {
+      lineNumberStrings.append("") // leere Zeilen für Wrapping
     }
-
-    glyphIndex += line.count + 1 // +1 für '\n'
-    currentLineNumber += 1
   }
 
   lineNumbersView.text = lineNumberStrings.joined(separator: "\n")
 
   // Dynamische Breite der Gutter-Spalte
-  let maxLineNumber = max(currentLineNumber - 1, 1)
+  let maxLineNumber = max(lines.count, 1)
   let digits = String(maxLineNumber).count
   let sample = String(repeating: "8", count: digits) as NSString
   let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24

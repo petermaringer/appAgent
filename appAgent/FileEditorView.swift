@@ -73,60 +73,58 @@ struct FileEditorView: View {
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
-  
-  func makeUIView(context: Context) -> UIView {
-    let container = LineNumberTextView()
-    container.textView.text = text
-    container.keywords = keywords
-    container.updateLineNumbers()
-    container.applyHighlighting()
-    
-    context.coordinator.editor = container
-    container.textView.delegate = context.coordinator
-    
-    return container
+
+  func makeUIView(context: Context) -> LineNumberTextView {
+    let view = LineNumberTextView()
+    view.textView.text = text
+    view.keywords = keywords
+    view.applyHighlighting()
+    view.refresh()
+    view.textView.delegate = context.coordinator
+    context.coordinator.editor = view
+    return view
   }
-  
-  func updateUIView(_ uiView: UIView, context: Context) {
-    guard let container = uiView as? LineNumberTextView else { return }
-    if container.textView.text != text {
-      container.textView.text = text
-      container.updateLineNumbers()
-      container.applyHighlighting()
+
+  func updateUIView(_ uiView: LineNumberTextView, context: Context) {
+    if uiView.textView.text != text {
+      uiView.textView.text = text
+      uiView.refresh()
+      uiView.applyHighlighting()
     }
   }
-  
+
   func makeCoordinator() -> Coordinator {
-    Coordinator(parent: self)
+    Coordinator(self)
   }
-  
+
   class Coordinator: NSObject, UITextViewDelegate {
     var parent: SyntaxTextViewWithLineNumbersSync
     weak var editor: LineNumberTextView?
-    
-    init(parent: SyntaxTextViewWithLineNumbersSync) {
+
+    init(_ parent: SyntaxTextViewWithLineNumbersSync) {
       self.parent = parent
     }
-    
+
     func textViewDidChange(_ textView: UITextView) {
       parent.text = textView.text
-      editor?.updateLineNumbers()
+      editor?.refresh()
       editor?.applyHighlighting()
     }
-    
+
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-      editor?.syncScroll()
+      editor?.setNeedsDisplay()
     }
   }
 }
 
-// MARK: - UITextView mit integrierter Gutter-Spalte
-class LineNumberTextView: UIView, UITextViewDelegate {
+
+// MARK: - LineNumberTextView (stabile Version)
+class LineNumberTextView: UIView {
 
   let textView = UITextView()
   var keywords: [String] = []
 
-  private let gutterWidthPadding: CGFloat = 12
+  private let gutterPadding: CGFloat = 12
   private var gutterWidth: CGFloat = 40
 
   override init(frame: CGRect) {
@@ -146,29 +144,26 @@ class LineNumberTextView: UIView, UITextViewDelegate {
     textView.autocorrectionType = .no
     textView.autocapitalizationType = .none
     textView.backgroundColor = .clear
-    textView.delegate = self
+    textView.isScrollEnabled = true
     textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
 
     addSubview(textView)
-
-    textView.translatesAutoresizingMaskIntoConstraints = false
-    NSLayoutConstraint.activate([
-      textView.topAnchor.constraint(equalTo: topAnchor),
-      textView.bottomAnchor.constraint(equalTo: bottomAnchor),
-      textView.trailingAnchor.constraint(equalTo: trailingAnchor),
-      textView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: gutterWidth)
-    ])
   }
 
   override func layoutSubviews() {
     super.layoutSubviews()
-    updateGutterWidth()
+
     textView.frame = CGRect(
       x: gutterWidth,
       y: 0,
       width: bounds.width - gutterWidth,
       height: bounds.height
     )
+  }
+
+  func refresh() {
+    updateGutterWidth()
+    setNeedsDisplay()
   }
 
   private func numberOfLines() -> Int {
@@ -183,8 +178,8 @@ class LineNumberTextView: UIView, UITextViewDelegate {
       .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     ]).width
 
-    gutterWidth = width + gutterWidthPadding
-    setNeedsDisplay()
+    gutterWidth = width + gutterPadding
+    setNeedsLayout()
   }
 
   override func draw(_ rect: CGRect) {
@@ -192,26 +187,22 @@ class LineNumberTextView: UIView, UITextViewDelegate {
 
     guard let context = UIGraphicsGetCurrentContext() else { return }
 
-    // Grauer Hintergrund
+    // Hintergrund
     UIColor.secondarySystemBackground.setFill()
     context.fill(CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height))
 
     let layoutManager = textView.layoutManager
     let textContainer = textView.textContainer
-
-    let visibleGlyphRange = layoutManager.glyphRange(
-      forBoundingRect: textView.bounds,
-      in: textContainer
-    )
+    let visibleRange = layoutManager.glyphRange(forBoundingRect: textView.bounds, in: textContainer)
 
     let text = textView.text as NSString
-    var lineNumber = 1
     var glyphIndex = 0
+    var lineNumber = 1
 
     while glyphIndex < layoutManager.numberOfGlyphs {
 
       var lineRange = NSRange()
-      let rect = layoutManager.lineFragmentRect(
+      let lineRect = layoutManager.lineFragmentRect(
         forGlyphAt: glyphIndex,
         effectiveRange: &lineRange
       )
@@ -221,18 +212,20 @@ class LineNumberTextView: UIView, UITextViewDelegate {
         actualGlyphRange: nil
       )
 
-      let isNewLine =
+      let isRealLine =
         charRange.location == 0 ||
         text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n"
 
-      if isNewLine {
+      if isRealLine {
 
-        if NSIntersectionRange(lineRange, visibleGlyphRange).length > 0 {
-          let y = rect.minY + textView.textContainerInset.top - textView.contentOffset.y
+        if NSIntersectionRange(lineRange, visibleRange).length > 0 {
+          let y = lineRect.minY + textView.textContainerInset.top - textView.contentOffset.y
 
           let numberString = "\(lineNumber)" as NSString
+          let size = numberString.size(withAttributes: [.font: textView.font!])
+
           numberString.draw(
-            at: CGPoint(x: gutterWidth - numberString.size(withAttributes: [.font: textView.font!]).width - 6, y: y),
+            at: CGPoint(x: gutterWidth - size.width - 6, y: y),
             withAttributes: [
               .font: textView.font!,
               .foregroundColor: UIColor.secondaryLabel
@@ -245,16 +238,6 @@ class LineNumberTextView: UIView, UITextViewDelegate {
 
       glyphIndex = NSMaxRange(lineRange)
     }
-  }
-
-  func textViewDidChange(_ textView: UITextView) {
-    updateGutterWidth()
-    setNeedsDisplay()
-    applyHighlighting()
-  }
-
-  func scrollViewDidScroll(_ scrollView: UIScrollView) {
-    setNeedsDisplay()
   }
 
   func applyHighlighting() {

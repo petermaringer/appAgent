@@ -50,7 +50,6 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   func makeUIView(context: Context) -> UIView {
     let container = UIView()
     
-    // Hintergrund für Zeilennummern
     let lineNumbersView = UITextView()
     lineNumbersView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     lineNumbersView.backgroundColor = UIColor.secondarySystemBackground
@@ -58,7 +57,6 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     lineNumbersView.isScrollEnabled = true
     lineNumbersView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
     
-    // Vordergrund für editierbaren Code
     let codeView = UITextView()
     codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     codeView.backgroundColor = .clear
@@ -66,7 +64,7 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     codeView.isScrollEnabled = true
     codeView.autocorrectionType = .no
     codeView.autocapitalizationType = .none
-    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 40, bottom: 8, right: 8)
+    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 50, bottom: 8, right: 8)
     
     container.addSubview(lineNumbersView)
     container.addSubview(codeView)
@@ -78,7 +76,6 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
       lineNumbersView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
       lineNumbersView.topAnchor.constraint(equalTo: container.topAnchor),
       lineNumbersView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-      lineNumbersView.widthAnchor.constraint(equalToConstant: 40),
       
       codeView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
       codeView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -86,24 +83,24 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
       codeView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
     ])
     
-    // Scroll synchronisieren, Tastatur NICHT automatisch schließen
-    codeView.addObserver(context.coordinator, forKeyPath: "contentOffset", options: .new, context: nil)
-    context.coordinator.lineNumbersView = lineNumbersView
     context.coordinator.codeView = codeView
+    context.coordinator.lineNumbersView = lineNumbersView
+    
+    codeView.text = text
+    context.coordinator.updateLineNumbers()
+    context.coordinator.applyHighlighting()
     
     return container
   }
   
   func updateUIView(_ uiView: UIView, context: Context) {
-    guard let codeView = context.coordinator.codeView, let lineNumbersView = context.coordinator.lineNumbersView else { return }
+    guard let codeView = context.coordinator.codeView else { return }
     
-    let selectedRange = codeView.selectedRange
-    codeView.attributedText = highlightedText(text)
-    codeView.selectedRange = selectedRange
-    
-    // Zeilennummern aktualisieren – Korrektur für EnumeratedSequence
-    let lines = text.components(separatedBy: "\n")
-    lineNumbersView.text = lines.enumerated().map { index, _ in "\(index + 1)" }.joined(separator: "\n")
+    if codeView.text != text {
+      codeView.text = text
+      context.coordinator.updateLineNumbers()
+      context.coordinator.applyHighlighting()
+    }
   }
   
   func makeCoordinator() -> Coordinator {
@@ -121,43 +118,58 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     
     func textViewDidChange(_ textView: UITextView) {
       parent.text = textView.text
+      updateLineNumbers()
+      applyHighlighting()
     }
     
-    // Scroll synchronisieren, Tastatur bleibt
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-      if keyPath == "contentOffset" {
-        if let codeView = codeView, let lineNumbersView = lineNumbersView {
-          lineNumbersView.contentOffset = codeView.contentOffset
-          // Tastatur wird hier NICHT geschlossen
+    func updateLineNumbers() {
+      guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
+      
+      let lines = codeView.text.components(separatedBy: "\n")
+      lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
+      
+      let digits = max(3, String(lines.count).count)
+      let sample = String(repeating: "8", count: digits) as NSString
+      let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 16
+      
+      if let constraint = lineNumbersView.constraints.first(where: { $0.firstAttribute == .width }) {
+        constraint.constant = width
+      } else {
+        lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
+      }
+      
+      codeView.textContainerInset.left = width + 4
+    }
+    
+    func applyHighlighting() {
+      guard let codeView = codeView else { return }
+      
+      let selected = codeView.selectedRange
+      let textStorage = codeView.textStorage
+      let fullRange = NSRange(location: 0, length: textStorage.length)
+      
+      textStorage.beginEditing()
+      
+      textStorage.setAttributes([
+        .foregroundColor: UIColor.label,
+        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+      ], range: fullRange)
+      
+      for keyword in parent.keywords {
+        let pattern = "\\b\(keyword)\\b"
+        if let regex = try? NSRegularExpression(pattern: pattern) {
+          let matches = regex.matches(in: codeView.text, range: fullRange)
+          for match in matches {
+            textStorage.addAttributes([
+              .foregroundColor: UIColor.systemBlue,
+              .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
+            ], range: match.range)
+          }
         }
       }
+      
+      textStorage.endEditing()
+      codeView.selectedRange = selected
     }
-    
-    deinit {
-      codeView?.removeObserver(self, forKeyPath: "contentOffset")
-    }
-  }
-  
-  // Syntax-Highlighting
-  private func highlightedText(_ code: String) -> NSAttributedString {
-    let attrString = NSMutableAttributedString(string: code)
-    let fullRange = NSRange(location: 0, length: attrString.length)
-    
-    attrString.addAttribute(.foregroundColor, value: UIColor.label, range: fullRange)
-    attrString.addAttribute(.font, value: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular), range: fullRange)
-    
-    for keyword in keywords {
-      let pattern = "\\b\(keyword)\\b"
-      if let regex = try? NSRegularExpression(pattern: pattern) {
-        let nsString = code as NSString
-        let matches = regex.matches(in: code, range: NSRange(location: 0, length: nsString.length))
-        for match in matches {
-          attrString.addAttribute(.foregroundColor, value: UIColor.systemBlue, range: match.range)
-          attrString.addAttribute(.font, value: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold), range: match.range)
-        }
-      }
-    }
-    
-    return attrString
   }
 }

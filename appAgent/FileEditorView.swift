@@ -214,16 +214,20 @@ class LineNumberGutterView: UIView {
     let textContainer = textView.textContainer
     layoutManager.ensureLayout(for: textContainer)
 
-    let visibleGlyphRange = layoutManager.glyphRange(
-      forBoundingRect: textView.bounds,
+    let visibleRect = CGRect(
+      origin: textView.contentOffset,
+      size: textView.bounds.size
+    )
+
+    let glyphRange = layoutManager.glyphRange(
+      forBoundingRect: visibleRect,
       in: textContainer
     )
 
-    var glyphIndex = visibleGlyphRange.location
-    var lineNumber = 1
-    let text = textView.text as NSString
+    var glyphIndex = glyphRange.location
+    let fullText = textView.text as NSString
 
-    while glyphIndex < visibleGlyphRange.upperBound {
+    while glyphIndex < glyphRange.upperBound {
 
       var lineRange = NSRange()
       let lineRect = layoutManager.lineFragmentRect(
@@ -236,10 +240,17 @@ class LineNumberGutterView: UIView {
         actualGlyphRange: nil
       )
 
+      // 🔹 echte Zeilennummer bestimmen
+      let substring = fullText.substring(to: charRange.location)
+      let lineNumber = substring.components(separatedBy: "\n").count
+
+      // 🔹 nur echte neue Zeilen beschriften
       if charRange.location == 0 ||
-         text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n" {
+         fullText.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n" {
 
         let y = lineRect.minY
+          - textView.contentOffset.y
+          + textView.textContainerInset.top
 
         let attributes: [NSAttributedString.Key: Any] = [
           .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
@@ -250,21 +261,22 @@ class LineNumberGutterView: UIView {
           at: CGPoint(x: 4, y: y),
           withAttributes: attributes
         )
-
-        lineNumber += 1
       }
 
       glyphIndex = NSMaxRange(lineRange)
     }
 
-    if text.length == 0 {
+    // leeres Dokument
+    if fullText.length == 0 {
       let attributes: [NSAttributedString.Key: Any] = [
         .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
         .foregroundColor: UIColor.secondaryLabel
       ]
 
-      "1".draw(at: CGPoint(x: 4, y: textView.textContainerInset.top),
-               withAttributes: attributes)
+      "1".draw(
+        at: CGPoint(x: 4, y: textView.textContainerInset.top),
+        withAttributes: attributes
+      )
     }
   }
 }

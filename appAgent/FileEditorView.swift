@@ -121,101 +121,153 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 }
 
 // MARK: - UITextView mit integrierter Gutter-Spalte
-class LineNumberTextView: UIView {
+class LineNumberTextView: UIView, UITextViewDelegate {
+
   let textView = UITextView()
-  private let gutterView = UITextView()
   var keywords: [String] = []
-  
-  private let gutterWidthPadding: CGFloat = 8
-  private var lastLineCount: Int = 0
-  
+
+  private let gutterWidthPadding: CGFloat = 12
+  private var gutterWidth: CGFloat = 40
+
   override init(frame: CGRect) {
     super.init(frame: frame)
     setup()
   }
-  
+
   required init?(coder: NSCoder) {
     super.init(coder: coder)
     setup()
   }
-  
+
   private func setup() {
-    // Gutter
-    gutterView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    gutterView.backgroundColor = UIColor.secondarySystemBackground
-    gutterView.isEditable = false
-    gutterView.isScrollEnabled = false
-    gutterView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 0)
-    addSubview(gutterView)
-    
-    // Code TextView
+    backgroundColor = .clear
+
     textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    textView.backgroundColor = .clear
     textView.autocorrectionType = .no
     textView.autocapitalizationType = .none
-    textView.isScrollEnabled = true
-    textView.textContainerInset = UIEdgeInsets(top: 8, left: 50, bottom: 8, right: 8)
+    textView.backgroundColor = .clear
+    textView.delegate = self
+    textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+
     addSubview(textView)
-    
+
     textView.translatesAutoresizingMaskIntoConstraints = false
-    gutterView.translatesAutoresizingMaskIntoConstraints = false
-    
     NSLayoutConstraint.activate([
-      gutterView.leadingAnchor.constraint(equalTo: leadingAnchor),
-      gutterView.topAnchor.constraint(equalTo: topAnchor),
-      gutterView.bottomAnchor.constraint(equalTo: bottomAnchor),
-      
-      textView.leadingAnchor.constraint(equalTo: leadingAnchor),
-      textView.trailingAnchor.constraint(equalTo: trailingAnchor),
       textView.topAnchor.constraint(equalTo: topAnchor),
-      textView.bottomAnchor.constraint(equalTo: bottomAnchor)
+      textView.bottomAnchor.constraint(equalTo: bottomAnchor),
+      textView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      textView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: gutterWidth)
     ])
-    
-    textView.addObserver(self, forKeyPath: "contentOffset", options: .new, context: nil)
   }
-  
-  deinit {
-    textView.removeObserver(self, forKeyPath: "contentOffset")
-  }
-  
+
   override func layoutSubviews() {
     super.layoutSubviews()
-    updateGutterFrame()
+    updateGutterWidth()
+    textView.frame = CGRect(
+      x: gutterWidth,
+      y: 0,
+      width: bounds.width - gutterWidth,
+      height: bounds.height
+    )
   }
-  
-  private func updateGutterFrame() {
-    let contentHeight = max(textView.contentSize.height, bounds.height)
-    let maxLineNumber = max(numberOfLines(), 1)
-    
-    let digits = String(maxLineNumber).count
-    let sample = String(repeating: "8", count: digits) as NSString
-    let width = sample.size(withAttributes: [.font: gutterView.font!]).width + gutterWidthPadding
-    
-    gutterView.frame = CGRect(x: 0, y: 0, width: width, height: contentHeight)
-    textView.textContainerInset.left = width + 4
-  }
-  
-  func numberOfLines() -> Int {
+
+  private func numberOfLines() -> Int {
     return max(textView.text.components(separatedBy: "\n").count, 1)
   }
-  
-  func updateLineNumbers() {
-    let lines = textView.text.components(separatedBy: "\n")
-    gutterView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
-    setNeedsLayout()
+
+  private func updateGutterWidth() {
+    let lineCount = numberOfLines()
+    let digits = String(lineCount).count
+    let sample = String(repeating: "8", count: digits) as NSString
+    let width = sample.size(withAttributes: [
+      .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    ]).width
+
+    gutterWidth = width + gutterWidthPadding
+    setNeedsDisplay()
   }
-  
+
+  override func draw(_ rect: CGRect) {
+    super.draw(rect)
+
+    guard let context = UIGraphicsGetCurrentContext() else { return }
+
+    // Grauer Hintergrund
+    UIColor.secondarySystemBackground.setFill()
+    context.fill(CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height))
+
+    let layoutManager = textView.layoutManager
+    let textContainer = textView.textContainer
+
+    let visibleGlyphRange = layoutManager.glyphRange(
+      forBoundingRect: textView.bounds,
+      in: textContainer
+    )
+
+    let text = textView.text as NSString
+    var lineNumber = 1
+    var glyphIndex = 0
+
+    while glyphIndex < layoutManager.numberOfGlyphs {
+
+      var lineRange = NSRange()
+      let rect = layoutManager.lineFragmentRect(
+        forGlyphAt: glyphIndex,
+        effectiveRange: &lineRange
+      )
+
+      let charRange = layoutManager.characterRange(
+        forGlyphRange: lineRange,
+        actualGlyphRange: nil
+      )
+
+      let isNewLine =
+        charRange.location == 0 ||
+        text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n"
+
+      if isNewLine {
+
+        if NSIntersectionRange(lineRange, visibleGlyphRange).length > 0 {
+          let y = rect.minY + textView.textContainerInset.top - textView.contentOffset.y
+
+          let numberString = "\(lineNumber)" as NSString
+          numberString.draw(
+            at: CGPoint(x: gutterWidth - numberString.size(withAttributes: [.font: textView.font!]).width - 6, y: y),
+            withAttributes: [
+              .font: textView.font!,
+              .foregroundColor: UIColor.secondaryLabel
+            ]
+          )
+        }
+
+        lineNumber += 1
+      }
+
+      glyphIndex = NSMaxRange(lineRange)
+    }
+  }
+
+  func textViewDidChange(_ textView: UITextView) {
+    updateGutterWidth()
+    setNeedsDisplay()
+    applyHighlighting()
+  }
+
+  func scrollViewDidScroll(_ scrollView: UIScrollView) {
+    setNeedsDisplay()
+  }
+
   func applyHighlighting() {
     let textStorage = textView.textStorage
     let fullRange = NSRange(location: 0, length: textStorage.length)
     let selected = textView.selectedRange
-    
+
     textStorage.beginEditing()
     textStorage.setAttributes([
       .foregroundColor: UIColor.label,
       .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     ], range: fullRange)
-    
+
     for keyword in keywords {
       let pattern = "\\b\(keyword)\\b"
       if let regex = try? NSRegularExpression(pattern: pattern) {
@@ -228,19 +280,8 @@ class LineNumberTextView: UIView {
         }
       }
     }
-    
+
     textStorage.endEditing()
     textView.selectedRange = selected
-  }
-  
-  func syncScroll() {
-    gutterView.contentOffset = textView.contentOffset
-  }
-  
-  override func observeValue(forKeyPath keyPath: String?, of object: Any?,
-                             change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-    if keyPath == "contentOffset" {
-      syncScroll()
-    }
   }
 }

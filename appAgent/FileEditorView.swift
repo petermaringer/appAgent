@@ -150,35 +150,27 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   }
   
   func updateLineNumbers() {
-    guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
+  guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
 
-    // Nur echte Zeilenumbrüche zählen
-    let lines = codeView.text.components(separatedBy: "\n")
-    var lineNumbersText = ""
-    
-    for i in 0..<lines.count {
-      lineNumbersText += "\(i + 1)\n"
-    }
-    
-    lineNumbersView.text = lineNumbersText
+  // Nur echte Zeilenumbrüche
+  let lines = codeView.text.components(separatedBy: "\n")
+  
+  // Nummerierung nur echte Zeilen
+  lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
+  
+  // Dynamische Breite der Zeilennummern
+  let maxLineNumber = max(lines.count, 1)
+  let digits = String(maxLineNumber).count
+  let sample = String(repeating: "8", count: digits) as NSString
+  let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
 
-    // Maximale Zeilenzahl berücksichtigen, mindestens 1
-    let maxLineNumber = max(lines.count, 1)
-    let digits = String(maxLineNumber).count
-    let sample = String(repeating: "8", count: digits) as NSString
+  // Alte Width-Constraints entfernen
+  lineNumbersView.constraints.filter { $0.firstAttribute == .width }.forEach { $0.isActive = false }
+  lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
 
-    // Breite plus Puffer
-    let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
-
-    // Alte Width-Constraints entfernen
-    lineNumbersView.constraints.filter { $0.firstAttribute == .width }.forEach { $0.isActive = false }
-
-    // Neue Constraint setzen
-    lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
-
-    // CodeView-Inset anpassen
-    codeView.textContainerInset.left = width + 4
-  }
+  // CodeView-Inset anpassen
+  codeView.textContainerInset.left = width + 4
+}
   
   func applyHighlighting() {
     guard let codeView = codeView else { return }

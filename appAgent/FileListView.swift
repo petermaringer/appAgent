@@ -3,8 +3,9 @@ import SwiftUI
 struct FileListView: View {
   let projectFolder: URL
   @State private var files: [IdentifiableFile] = []
-  @State private var selectedFile: URL?
+  @State private var selectedFile: IdentifiableFile?
   @State private var targetFile: URL?
+  
   @State private var showingEditor: Bool = false
 
   struct IdentifiableFile: Identifiable {
@@ -33,17 +34,14 @@ struct FileListView: View {
           }
           .contentShape(Rectangle())
           .onTapGesture {
-            selectedFile = file
-            showingEditor = true
+            selectedFile = item
           }
         }
       }
     }
     .onAppear(perform: loadFiles)
-    .sheet(isPresented: $showingEditor) {
-      if let file = selectedFile {
-        FileEditorView(fileURL: file)
-      }
+    .sheet(item: $selectedFile) { item in
+      FileEditorView(fileURL: item.file)
     }
   }
 

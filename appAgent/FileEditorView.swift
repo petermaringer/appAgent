@@ -69,214 +69,164 @@ struct FileEditorView: View {
 }
 
 // MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern
+// MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
-
-  func makeUIView(context: Context) -> EditorTextView {
-    let textView = EditorTextView()
-    textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    textView.autocorrectionType = .no
-    textView.autocapitalizationType = .none
-    textView.delegate = context.coordinator
-    textView.setText(text, keywords: keywords)
-    return textView
+  
+  func makeUIView(context: Context) -> UIView {
+    let container = LineNumberTextView()
+    container.textView.text = text
+    container.keywords = keywords
+    container.updateLineNumbers()
+    container.applyHighlighting()
+    
+    context.coordinator.editor = container
+    container.textView.delegate = context.coordinator
+    
+    return container
   }
-
-  func updateUIView(_ uiView: EditorTextView, context: Context) {
-    if uiView.text != text {
-      uiView.setText(text, keywords: keywords)
+  
+  func updateUIView(_ uiView: UIView, context: Context) {
+    guard let container = uiView as? LineNumberTextView else { return }
+    if container.textView.text != text {
+      container.textView.text = text
+      container.updateLineNumbers()
+      container.applyHighlighting()
     }
   }
-
+  
   func makeCoordinator() -> Coordinator {
-    Coordinator(self)
+    Coordinator(parent: self)
   }
-
+  
   class Coordinator: NSObject, UITextViewDelegate {
     var parent: SyntaxTextViewWithLineNumbersSync
-
-    init(_ parent: SyntaxTextViewWithLineNumbersSync) {
+    weak var editor: LineNumberTextView?
+    
+    init(parent: SyntaxTextViewWithLineNumbersSync) {
       self.parent = parent
     }
-
+    
     func textViewDidChange(_ textView: UITextView) {
       parent.text = textView.text
-      if let editor = textView as? EditorTextView {
-        editor.applyHighlighting(keywords: parent.keywords)
-      }
+      editor?.updateLineNumbers()
+      editor?.applyHighlighting()
     }
   }
 }
 
-class EditorTextView: UITextView {
-
-  private var gutterWidth: CGFloat = 30
-  private let gutterView = LineNumberGutterView()
-  private var lastLineCount: Int = 0
-
-  override init(frame: CGRect, textContainer: NSTextContainer?) {
-    super.init(frame: frame, textContainer: textContainer)
-    commonInit()
+// MARK: - UITextView mit integrierter Gutter-Spalte
+class LineNumberTextView: UIView {
+  let textView = UITextView()
+  private let gutterView = UITextView()
+  var keywords: [String] = []
+  
+  private let gutterWidthPadding: CGFloat = 8
+  
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    setup()
   }
-
+  
   required init?(coder: NSCoder) {
     super.init(coder: coder)
-    commonInit()
+    setup()
   }
-
-  private func commonInit() {
-    backgroundColor = .clear
-    textContainer.lineFragmentPadding = 0
-    textContainerInset = UIEdgeInsets(top: 8, left: gutterWidth + 8, bottom: 8, right: 8)
-
-    gutterView.textView = self
+  
+  private func setup() {
+    // Gutter
+    gutterView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    gutterView.backgroundColor = UIColor.secondarySystemBackground
+    gutterView.isEditable = false
+    gutterView.isScrollEnabled = false
+    gutterView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 0)
     addSubview(gutterView)
+    
+    // Code TextView
+    textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    textView.backgroundColor = .clear
+    textView.autocorrectionType = .no
+    textView.autocapitalizationType = .none
+    textView.isScrollEnabled = true
+    textView.textContainerInset = UIEdgeInsets(top: 8, left: 50, bottom: 8, right: 8)
+    addSubview(textView)
+    
+    textView.translatesAutoresizingMaskIntoConstraints = false
+    gutterView.translatesAutoresizingMaskIntoConstraints = false
+    
+    NSLayoutConstraint.activate([
+      gutterView.leadingAnchor.constraint(equalTo: leadingAnchor),
+      gutterView.topAnchor.constraint(equalTo: topAnchor),
+      gutterView.bottomAnchor.constraint(equalTo: bottomAnchor),
+      
+      textView.leadingAnchor.constraint(equalTo: leadingAnchor),
+      textView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      textView.topAnchor.constraint(equalTo: topAnchor),
+      textView.bottomAnchor.constraint(equalTo: bottomAnchor)
+    ])
+    
+    // Scroll synchronisieren
+    textView.addObserver(self, forKeyPath: "contentOffset", options: .new, context: nil)
   }
-
+  
+  deinit {
+    textView.removeObserver(self, forKeyPath: "contentOffset")
+  }
+  
   override func layoutSubviews() {
     super.layoutSubviews()
-    gutterView.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height)
-    gutterView.setNeedsDisplay()
+    let contentHeight = max(textView.contentSize.height, bounds.height)
+    let digits = max(String(numberOfLines()).count, 1)
+    let sample = String(repeating: "8", count: digits) as NSString
+    let width = sample.size(withAttributes: [.font: gutterView.font!]).width + gutterWidthPadding
+    
+    gutterView.frame = CGRect(x: 0, y: 0, width: width, height: contentHeight)
+    textView.textContainerInset.left = width + 4
   }
-
-  override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
-    super.setContentOffset(contentOffset, animated: animated)
-    gutterView.setNeedsDisplay()
+  
+  func numberOfLines() -> Int {
+    return max(textView.text.components(separatedBy: "\n").count, 1)
   }
-
-  func setText(_ newText: String, keywords: [String]) {
-    text = newText
-    applyHighlighting(keywords: keywords)
-    updateGutterWidth()
-    gutterView.setNeedsDisplay()
+  
+  func updateLineNumbers() {
+    let lines = textView.text.components(separatedBy: "\n")
+    gutterView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
+    setNeedsLayout()
   }
-
-  func applyHighlighting(keywords: [String]) {
-    let selected = selectedRange
-    let storage = textStorage
-    let fullRange = NSRange(location: 0, length: storage.length)
-
-    storage.beginEditing()
-    storage.setAttributes([
+  
+  func applyHighlighting() {
+    let textStorage = textView.textStorage
+    let fullRange = NSRange(location: 0, length: textStorage.length)
+    let selected = textView.selectedRange
+    
+    textStorage.beginEditing()
+    textStorage.setAttributes([
       .foregroundColor: UIColor.label,
       .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     ], range: fullRange)
-
+    
     for keyword in keywords {
       let pattern = "\\b\(keyword)\\b"
       if let regex = try? NSRegularExpression(pattern: pattern) {
-        let matches = regex.matches(in: text, range: fullRange)
+        let matches = regex.matches(in: textView.text, range: fullRange)
         for match in matches {
-          storage.addAttributes([
+          textStorage.addAttributes([
             .foregroundColor: UIColor.systemBlue,
             .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
           ], range: match.range)
         }
       }
     }
-
-    storage.endEditing()
-    selectedRange = selected
-    updateGutterWidth()
+    
+    textStorage.endEditing()
+    textView.selectedRange = selected
   }
-
-  private func updateGutterWidth() {
-    let lineCount = max(text.components(separatedBy: "\n").count, 1)
-
-    if lineCount == lastLineCount { return }
-    lastLineCount = lineCount
-
-    let digits = String(lineCount).count
-    let sample = String(repeating: "8", count: digits) as NSString
-    let width = sample.size(withAttributes: [
-      .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    ]).width + 12
-
-    gutterWidth = max(width, 24)
-
-    textContainerInset.left = gutterWidth + 8
-    setNeedsLayout()
-  }
-}
-
-class LineNumberGutterView: UIView {
-
-  weak var textView: UITextView?
-
-  override func draw(_ rect: CGRect) {
-    guard let textView = textView else { return }
-
-    UIColor.secondarySystemBackground.setFill()
-    UIRectFill(bounds)
-
-    let layoutManager = textView.layoutManager
-    let textContainer = textView.textContainer
-    layoutManager.ensureLayout(for: textContainer)
-
-    let visibleRect = CGRect(
-      origin: textView.contentOffset,
-      size: textView.bounds.size
-    )
-
-    let glyphRange = layoutManager.glyphRange(
-      forBoundingRect: visibleRect,
-      in: textContainer
-    )
-
-    var glyphIndex = glyphRange.location
-    let fullText = textView.text as NSString
-
-    while glyphIndex < glyphRange.upperBound {
-
-      var lineRange = NSRange()
-      let lineRect = layoutManager.lineFragmentRect(
-        forGlyphAt: glyphIndex,
-        effectiveRange: &lineRange
-      )
-
-      let charRange = layoutManager.characterRange(
-        forGlyphRange: lineRange,
-        actualGlyphRange: nil
-      )
-
-      // 🔹 echte Zeilennummer bestimmen
-      let substring = fullText.substring(to: charRange.location)
-      let lineNumber = substring.components(separatedBy: "\n").count
-
-      // 🔹 nur echte neue Zeilen beschriften
-      if charRange.location == 0 ||
-         fullText.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n" {
-
-        let y = lineRect.minY
-          - textView.contentOffset.y
-          + textView.textContainerInset.top
-
-        let attributes: [NSAttributedString.Key: Any] = [
-          .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
-          .foregroundColor: UIColor.secondaryLabel
-        ]
-
-        "\(lineNumber)".draw(
-          at: CGPoint(x: 4, y: y),
-          withAttributes: attributes
-        )
-      }
-
-      glyphIndex = NSMaxRange(lineRange)
-    }
-
-    // leeres Dokument
-    if fullText.length == 0 {
-      let attributes: [NSAttributedString.Key: Any] = [
-        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
-        .foregroundColor: UIColor.secondaryLabel
-      ]
-
-      "1".draw(
-        at: CGPoint(x: 4, y: textView.textContainerInset.top),
-        withAttributes: attributes
-      )
+  
+  override func observeValue(forKeyPath keyPath: String?, of object: Any?,
+                             change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+    if keyPath == "contentOffset" {
+      gutterView.contentOffset = textView.contentOffset
     }
   }
 }

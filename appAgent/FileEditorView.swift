@@ -113,6 +113,10 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
       editor?.updateLineNumbers()
       editor?.applyHighlighting()
     }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+      editor?.syncScroll()
+    }
   }
 }
 
@@ -167,7 +171,6 @@ class LineNumberTextView: UIView {
       textView.bottomAnchor.constraint(equalTo: bottomAnchor)
     ])
     
-    // Scroll synchronisieren
     textView.addObserver(self, forKeyPath: "contentOffset", options: .new, context: nil)
   }
   
@@ -183,20 +186,16 @@ class LineNumberTextView: UIView {
   private func updateGutterFrame() {
     let contentHeight = max(textView.contentSize.height, bounds.height)
     let maxLineNumber = max(numberOfLines(), 1)
-    if maxLineNumber != lastLineCount {
-      lastLineCount = maxLineNumber
-      let digits = String(maxLineNumber).count
-      let sample = String(repeating: "8", count: digits) as NSString
-      let width = sample.size(withAttributes: [.font: gutterView.font!]).width + gutterWidthPadding
-      gutterView.frame = CGRect(x: 0, y: 0, width: width, height: contentHeight)
-      textView.textContainerInset.left = width + 4
-    } else {
-      gutterView.frame.size.height = contentHeight
-    }
+    
+    let digits = String(maxLineNumber).count
+    let sample = String(repeating: "8", count: digits) as NSString
+    let width = sample.size(withAttributes: [.font: gutterView.font!]).width + gutterWidthPadding
+    
+    gutterView.frame = CGRect(x: 0, y: 0, width: width, height: contentHeight)
+    textView.textContainerInset.left = width + 4
   }
   
   func numberOfLines() -> Int {
-    // Echte Zeilen anhand von "\n"
     return max(textView.text.components(separatedBy: "\n").count, 1)
   }
   
@@ -234,10 +233,14 @@ class LineNumberTextView: UIView {
     textView.selectedRange = selected
   }
   
+  func syncScroll() {
+    gutterView.contentOffset = textView.contentOffset
+  }
+  
   override func observeValue(forKeyPath keyPath: String?, of object: Any?,
                              change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
     if keyPath == "contentOffset" {
-      gutterView.contentOffset = textView.contentOffset
+      syncScroll()
     }
   }
 }

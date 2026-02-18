@@ -152,23 +152,49 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   func updateLineNumbers() {
   guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
 
-  // Nur echte Zeilenumbrüche
-  let lines = codeView.text.components(separatedBy: "\n")
-  
-  // Nummerierung nur echte Zeilen
-  lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
-  
-  // Dynamische Breite der Zeilennummern
-  let maxLineNumber = max(lines.count, 1)
+  let layoutManager = codeView.layoutManager
+  let textContainer = codeView.textContainer
+  let text = codeView.text as NSString
+  let numberOfGlyphs = layoutManager.numberOfGlyphs
+
+  var lineNumberStrings: [String] = []
+  var glyphIndex = 0
+  var currentLineNumber = 1
+
+  while glyphIndex < numberOfGlyphs {
+    var lineRange = NSRange()
+    let lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: &lineRange)
+    let charRange = layoutManager.characterRange(forGlyphRange: lineRange, actualGlyphRange: nil)
+
+    let isRealLine: Bool
+    if charRange.location == 0 {
+      isRealLine = true
+    } else {
+      let prevChar = text.substring(with: NSRange(location: charRange.location - 1, length: 1))
+      isRealLine = prevChar == "\n"
+    }
+
+    if isRealLine {
+      lineNumberStrings.append("\(currentLineNumber)")
+      currentLineNumber += 1
+    } else {
+      lineNumberStrings.append("") // wrapped line → leere Zeile
+    }
+
+    glyphIndex = NSMaxRange(lineRange)
+  }
+
+  lineNumbersView.text = lineNumberStrings.joined(separator: "\n")
+
+  // Dynamische Breite der Gutter-Spalte
+  let maxLineNumber = max(currentLineNumber - 1, 1)
   let digits = String(maxLineNumber).count
   let sample = String(repeating: "8", count: digits) as NSString
   let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
 
-  // Alte Width-Constraints entfernen
   lineNumbersView.constraints.filter { $0.firstAttribute == .width }.forEach { $0.isActive = false }
   lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
 
-  // CodeView-Inset anpassen
   codeView.textContainerInset.left = width + 4
 }
   

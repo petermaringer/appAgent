@@ -1,5 +1,10 @@
 import SwiftUI
 
+// URL für Sheet eindeutig identifizierbar machen
+extension URL: Identifiable {
+  public var id: String { absoluteString }
+}
+
 struct FileListView: View {
   let projectFolder: URL
   @State private var files: [URL] = []
@@ -32,6 +37,7 @@ struct FileListView: View {
       }
     }
     .onAppear(perform: loadFiles)
+    // Sheet stabil über item: URL muss Identifiable sein
     .sheet(item: $selectedFile) { file in
       FileEditorView(fileURL: file)
     }

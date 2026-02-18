@@ -123,6 +123,7 @@ class LineNumberTextView: UIView {
   var keywords: [String] = []
   
   private let gutterWidthPadding: CGFloat = 8
+  private var lastLineCount: Int = 0
   
   override init(frame: CGRect) {
     super.init(frame: frame)
@@ -176,16 +177,26 @@ class LineNumberTextView: UIView {
   
   override func layoutSubviews() {
     super.layoutSubviews()
+    updateGutterFrame()
+  }
+  
+  private func updateGutterFrame() {
     let contentHeight = max(textView.contentSize.height, bounds.height)
-    let digits = max(String(numberOfLines()).count, 1)
-    let sample = String(repeating: "8", count: digits) as NSString
-    let width = sample.size(withAttributes: [.font: gutterView.font!]).width + gutterWidthPadding
-    
-    gutterView.frame = CGRect(x: 0, y: 0, width: width, height: contentHeight)
-    textView.textContainerInset.left = width + 4
+    let maxLineNumber = max(numberOfLines(), 1)
+    if maxLineNumber != lastLineCount {
+      lastLineCount = maxLineNumber
+      let digits = String(maxLineNumber).count
+      let sample = String(repeating: "8", count: digits) as NSString
+      let width = sample.size(withAttributes: [.font: gutterView.font!]).width + gutterWidthPadding
+      gutterView.frame = CGRect(x: 0, y: 0, width: width, height: contentHeight)
+      textView.textContainerInset.left = width + 4
+    } else {
+      gutterView.frame.size.height = contentHeight
+    }
   }
   
   func numberOfLines() -> Int {
+    // Echte Zeilen anhand von "\n"
     return max(textView.text.components(separatedBy: "\n").count, 1)
   }
   

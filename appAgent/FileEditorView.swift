@@ -69,6 +69,7 @@ struct FileEditorView: View {
 }
 
 // MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern
+// MARK: - Editierbarer CodeView mit Zeilennummern
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
@@ -116,14 +117,16 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   }
 }
 
-
-// MARK: - LineNumberTextView
+// MARK: - Neuer LineNumberTextView
 class LineNumberTextView: UIView {
 
   let textView = UITextView()
+  private let gutterView = UIView()
+  private var lineLabels: [UILabel] = []
+
   var keywords: [String] = []
 
-  private let gutterPadding: CGFloat = 12
+  private let gutterPadding: CGFloat = 8
   private var gutterWidth: CGFloat = 40
 
   override init(frame: CGRect) {
@@ -139,105 +142,82 @@ class LineNumberTextView: UIView {
   private func setup() {
     backgroundColor = .clear
 
+    // TextView Setup
     textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     textView.autocorrectionType = .no
     textView.autocapitalizationType = .none
     textView.backgroundColor = .clear
     textView.isScrollEnabled = true
-    textView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
-
+    textView.textContainerInset = UIEdgeInsets(top: 8, left: 0, bottom: 8, right: 8)
+    textView.delegate = nil
     addSubview(textView)
+
+    // Gutter Setup
+    gutterView.backgroundColor = UIColor.secondarySystemBackground
+    addSubview(gutterView)
+
+    // Scroll synchronisieren
+    textView.addObserver(self, forKeyPath: "contentOffset", options: .new, context: nil)
+  }
+
+  deinit {
+    textView.removeObserver(self, forKeyPath: "contentOffset")
   }
 
   override func layoutSubviews() {
     super.layoutSubviews()
 
+    updateGutterWidth()
+
+    gutterView.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height)
     textView.frame = CGRect(
       x: gutterWidth,
       y: 0,
       width: bounds.width - gutterWidth,
       height: bounds.height
     )
+
+    updateLineLabels()
   }
 
   func refresh() {
     textView.layoutManager.ensureLayout(for: textView.textContainer)
     updateGutterWidth()
-    setNeedsLayout()
-    setNeedsDisplay()
+    updateLineLabels()
   }
 
   private func numberOfLines() -> Int {
-    let text = textView.text ?? ""
-    if text.isEmpty { return 1 }
-    return text.split(separator: "\n", omittingEmptySubsequences: false).count
+    let lines = textView.text.split(separator: "\n", omittingEmptySubsequences: false)
+    return max(lines.count, 1)
   }
 
   private func updateGutterWidth() {
-    let lineCount = numberOfLines()
-    let digits = String(lineCount).count
+    let lines = numberOfLines()
+    let digits = String(lines).count
     let sample = String(repeating: "8", count: digits) as NSString
-    let width = sample.size(withAttributes: [
-      .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    ]).width
-
+    let width = sample.size(withAttributes: [.font: textView.font!]).width
     gutterWidth = width + gutterPadding
   }
 
-  override func draw(_ rect: CGRect) {
-    super.draw(rect)
-
-    guard let context = UIGraphicsGetCurrentContext() else { return }
-
-    UIColor.secondarySystemBackground.setFill()
-    context.fill(CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height))
-
-    let layoutManager = textView.layoutManager
-    let textContainer = textView.textContainer
-    let visibleRange = layoutManager.glyphRange(forBoundingRect: textView.bounds, in: textContainer)
+  private func updateLineLabels() {
+    // Alle alten Labels entfernen
+    lineLabels.forEach { $0.removeFromSuperview() }
+    lineLabels.removeAll()
 
     let text = textView.text as NSString
-    var glyphIndex = 0
-    var lineNumber = 1
+    let lines = text.components(separatedBy: "\n")
+    var yOffset: CGFloat = textView.textContainerInset.top
 
-    while glyphIndex < layoutManager.numberOfGlyphs {
-
-      var lineRange = NSRange()
-      let lineRect = layoutManager.lineFragmentRect(
-        forGlyphAt: glyphIndex,
-        effectiveRange: &lineRange
-      )
-
-      let charRange = layoutManager.characterRange(
-        forGlyphRange: lineRange,
-        actualGlyphRange: nil
-      )
-
-      let isRealLine =
-        charRange.location == 0 ||
-        text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n"
-
-      if isRealLine {
-
-        if NSIntersectionRange(lineRange, visibleRange).length > 0 {
-          let y = lineRect.minY - textView.contentOffset.y
-
-          let numberString = "\(lineNumber)" as NSString
-          let size = numberString.size(withAttributes: [.font: textView.font!])
-
-          numberString.draw(
-            at: CGPoint(x: gutterWidth - size.width - 6, y: y),
-            withAttributes: [
-              .font: textView.font!,
-              .foregroundColor: UIColor.secondaryLabel
-            ]
-          )
-        }
-
-        lineNumber += 1
-      }
-
-      glyphIndex = NSMaxRange(lineRange)
+    for (i, _) in lines.enumerated() {
+      let lineHeight = textView.font!.lineHeight
+      let label = UILabel(frame: CGRect(x: 0, y: yOffset, width: gutterWidth - gutterPadding, height: lineHeight))
+      label.font = textView.font
+      label.textColor = UIColor.secondaryLabel
+      label.textAlignment = .right
+      label.text = "\(i + 1)"
+      gutterView.addSubview(label)
+      lineLabels.append(label)
+      yOffset += lineHeight
     }
   }
 
@@ -249,7 +229,7 @@ class LineNumberTextView: UIView {
     textStorage.beginEditing()
     textStorage.setAttributes([
       .foregroundColor: UIColor.label,
-      .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+      .font: textView.font!
     ], range: fullRange)
 
     for keyword in keywords {
@@ -267,5 +247,13 @@ class LineNumberTextView: UIView {
 
     textStorage.endEditing()
     textView.selectedRange = selected
+  }
+
+  // Synchronisiere Gutter beim Scrollen
+  override func observeValue(forKeyPath keyPath: String?, of object: Any?,
+                             change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+    if keyPath == "contentOffset" {
+      gutterView.frame.origin.y = -textView.contentOffset.y
+    }
   }
 }

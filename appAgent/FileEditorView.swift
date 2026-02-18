@@ -135,85 +135,92 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   }
   
   class Coordinator: NSObject, UITextViewDelegate {
-    var parent: SyntaxTextViewWithLineNumbersSync
-    weak var codeView: UITextView?
-    weak var lineNumbersView: UITextView?
+  var parent: SyntaxTextViewWithLineNumbersSync
+  weak var codeView: UITextView?
+  weak var lineNumbersView: UITextView?
+  
+  init(parent: SyntaxTextViewWithLineNumbersSync) {
+    self.parent = parent
+  }
+  
+  func textViewDidChange(_ textView: UITextView) {
+    parent.text = textView.text
+    updateLineNumbers()
+    applyHighlighting()
+  }
+  
+  func updateLineNumbers() {
+    guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
+
+    // Nur echte Zeilenumbrüche zählen
+    let lines = codeView.text.components(separatedBy: "\n")
+    var lineNumbersText = ""
     
-    init(parent: SyntaxTextViewWithLineNumbersSync) {
-      self.parent = parent
+    for i in 0..<lines.count {
+      lineNumbersText += "\(i + 1)\n"
     }
     
-    func textViewDidChange(_ textView: UITextView) {
-      parent.text = textView.text
-      updateLineNumbers()
-      applyHighlighting()
-    }
+    lineNumbersView.text = lineNumbersText
+
+    // Maximale Zeilenzahl berücksichtigen, mindestens 1
+    let maxLineNumber = max(lines.count, 1)
+    let digits = String(maxLineNumber).count
+    let sample = String(repeating: "8", count: digits) as NSString
+
+    // Breite plus Puffer
+    let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
+
+    // Alte Width-Constraints entfernen
+    lineNumbersView.constraints.filter { $0.firstAttribute == .width }.forEach { $0.isActive = false }
+
+    // Neue Constraint setzen
+    lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
+
+    // CodeView-Inset anpassen
+    codeView.textContainerInset.left = width + 4
+  }
+  
+  func applyHighlighting() {
+    guard let codeView = codeView else { return }
     
-    func updateLineNumbers() {
-  guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
-
-  let lines = codeView.text.components(separatedBy: "\n")
-  lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
-
-  // Maximale Zeilenzahl berücksichtigen, mindestens 1
-  let maxLineNumber = max(lines.count, 1)
-  let digits = String(maxLineNumber).count
-  let sample = String(repeating: "8", count: digits) as NSString
-
-  // Breite plus Puffer
-  let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
-
-  // Alte Width-Constraints entfernen
-  lineNumbersView.constraints.filter { $0.firstAttribute == .width }.forEach { $0.isActive = false }
-
-  // Neue Constraint setzen
-  lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
-
-  // CodeView-Inset anpassen
-  codeView.textContainerInset.left = width + 4
-}
+    let selected = codeView.selectedRange
+    let textStorage = codeView.textStorage
+    let fullRange = NSRange(location: 0, length: textStorage.length)
     
-    func applyHighlighting() {
-      guard let codeView = codeView else { return }
-      
-      let selected = codeView.selectedRange
-      let textStorage = codeView.textStorage
-      let fullRange = NSRange(location: 0, length: textStorage.length)
-      
-      textStorage.beginEditing()
-      textStorage.setAttributes([
-        .foregroundColor: UIColor.label,
-        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-      ], range: fullRange)
-      
-      for keyword in parent.keywords {
-        let pattern = "\\b\(keyword)\\b"
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-          let matches = regex.matches(in: codeView.text, range: fullRange)
-          for match in matches {
-            textStorage.addAttributes([
-              .foregroundColor: UIColor.systemBlue,
-              .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
-            ], range: match.range)
-          }
-        }
-      }
-      
-      textStorage.endEditing()
-      codeView.selectedRange = selected
-    }
+    textStorage.beginEditing()
+    textStorage.setAttributes([
+      .foregroundColor: UIColor.label,
+      .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    ], range: fullRange)
     
-    // Scroll synchronisieren
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-      if keyPath == "contentOffset" {
-        if let codeView = codeView, let lineNumbersView = lineNumbersView {
-          lineNumbersView.contentOffset = codeView.contentOffset
+    for keyword in parent.keywords {
+      let pattern = "\\b\(keyword)\\b"
+      if let regex = try? NSRegularExpression(pattern: pattern) {
+        let matches = regex.matches(in: codeView.text, range: fullRange)
+        for match in matches {
+          textStorage.addAttributes([
+            .foregroundColor: UIColor.systemBlue,
+            .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
+          ], range: match.range)
         }
       }
     }
     
-    deinit {
-      codeView?.removeObserver(self, forKeyPath: "contentOffset")
+    textStorage.endEditing()
+    codeView.selectedRange = selected
+  }
+  
+  // Scroll synchronisieren
+  override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+    if keyPath == "contentOffset" {
+      if let codeView = codeView, let lineNumbersView = lineNumbersView {
+        lineNumbersView.contentOffset = codeView.contentOffset
+      }
     }
   }
+  
+  deinit {
+    codeView?.removeObserver(self, forKeyPath: "contentOffset")
+  }
+}
 }

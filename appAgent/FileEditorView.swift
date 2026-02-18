@@ -149,43 +149,52 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     applyHighlighting()
   }
   
- func updateLineNumbers() {
+func updateLineNumbers() {
   guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
 
   let layoutManager = codeView.layoutManager
+  let textContainer = codeView.textContainer
   let textStorage = codeView.textStorage
   let text = textStorage.string as NSString
-
   var lineNumberStrings: [String] = []
 
-  var lineIndex = 0
+  let lines = text.components(separatedBy: "\n")
   var glyphIndex = 0
+  var currentLineNumber = 1
 
-  while glyphIndex < layoutManager.numberOfGlyphs {
-    var lineRange = NSRange()
-    let lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: &lineRange)
+  for line in lines {
+    // Alle Glyphs dieser echten Zeile bestimmen
+    let lineRange = NSRange(location: glyphIndex, length: line.count)
+    var fragmentIndex = 0
 
-    let charRange = layoutManager.characterRange(forGlyphRange: lineRange, actualGlyphRange: nil)
+    while fragmentIndex < lineRange.length {
+      let glyphRangePointer = UnsafeMutablePointer<NSRange>.allocate(capacity: 1)
+      defer { glyphRangePointer.deallocate() }
 
-    // Prüfen: ist dieser Glyph die erste in einer echten Textzeile?
-    let isRealLine =
-      charRange.location == 0 ||
-      text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n"
+      let lineRect = layoutManager.lineFragmentRect(
+        forGlyphAt: glyphIndex + fragmentIndex,
+        effectiveRange: glyphRangePointer
+      )
 
-    if isRealLine {
-      lineIndex += 1
-      lineNumberStrings.append("\(lineIndex)")
-    } else {
-      lineNumberStrings.append("")
+      if fragmentIndex == 0 {
+        // Erste visuelle Zeile der echten Zeile → Zahl
+        lineNumberStrings.append("\(currentLineNumber)")
+      } else {
+        // Wrapped Zeilen → leer
+        lineNumberStrings.append("")
+      }
+
+      fragmentIndex = NSMaxRange(glyphRangePointer.pointee) - glyphIndex
     }
 
-    glyphIndex = NSMaxRange(lineRange)
+    glyphIndex += line.count + 1 // +1 für '\n'
+    currentLineNumber += 1
   }
 
   lineNumbersView.text = lineNumberStrings.joined(separator: "\n")
 
-  // Dynamische Breite
-  let maxLineNumber = max(lineIndex, 1)
+  // Dynamische Breite der Gutter-Spalte
+  let maxLineNumber = max(currentLineNumber - 1, 1)
   let digits = String(maxLineNumber).count
   let sample = String(repeating: "8", count: digits) as NSString
   let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24

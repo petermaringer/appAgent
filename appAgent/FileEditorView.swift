@@ -149,36 +149,34 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     applyHighlighting()
   }
   
-  func updateLineNumbers() {
+ func updateLineNumbers() {
   guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
 
   let layoutManager = codeView.layoutManager
-  let textContainer = codeView.textContainer
-  let text = codeView.text as NSString
-  let numberOfGlyphs = layoutManager.numberOfGlyphs
+  let textStorage = codeView.textStorage
+  let text = textStorage.string as NSString
 
   var lineNumberStrings: [String] = []
-  var glyphIndex = 0
-  var currentLineNumber = 1
 
-  while glyphIndex < numberOfGlyphs {
+  var lineIndex = 0
+  var glyphIndex = 0
+
+  while glyphIndex < layoutManager.numberOfGlyphs {
     var lineRange = NSRange()
     let lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: &lineRange)
+
     let charRange = layoutManager.characterRange(forGlyphRange: lineRange, actualGlyphRange: nil)
 
-    let isRealLine: Bool
-    if charRange.location == 0 {
-      isRealLine = true
-    } else {
-      let prevChar = text.substring(with: NSRange(location: charRange.location - 1, length: 1))
-      isRealLine = prevChar == "\n"
-    }
+    // Prüfen: ist dieser Glyph die erste in einer echten Textzeile?
+    let isRealLine =
+      charRange.location == 0 ||
+      text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n"
 
     if isRealLine {
-      lineNumberStrings.append("\(currentLineNumber)")
-      currentLineNumber += 1
+      lineIndex += 1
+      lineNumberStrings.append("\(lineIndex)")
     } else {
-      lineNumberStrings.append("") // wrapped line → leere Zeile
+      lineNumberStrings.append("")
     }
 
     glyphIndex = NSMaxRange(lineRange)
@@ -186,8 +184,8 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 
   lineNumbersView.text = lineNumberStrings.joined(separator: "\n")
 
-  // Dynamische Breite der Gutter-Spalte
-  let maxLineNumber = max(currentLineNumber - 1, 1)
+  // Dynamische Breite
+  let maxLineNumber = max(lineIndex, 1)
   let digits = String(maxLineNumber).count
   let sample = String(repeating: "8", count: digits) as NSString
   let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24

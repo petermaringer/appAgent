@@ -72,187 +72,181 @@ struct FileEditorView: View {
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
-  
-  func makeUIView(context: Context) -> UIView {
-    let container = UIView()
-    
-    let lineNumbersView = UITextView()
-    lineNumbersView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    lineNumbersView.backgroundColor = UIColor.secondarySystemBackground
-    lineNumbersView.isEditable = false
-    lineNumbersView.isScrollEnabled = true
-    lineNumbersView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 0)
-    
-    let codeView = UITextView()
-    codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    codeView.backgroundColor = .clear
-    codeView.delegate = context.coordinator
-    codeView.isScrollEnabled = true
-    codeView.autocorrectionType = .no
-    codeView.autocapitalizationType = .none
-    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 50, bottom: 8, right: 8)
-    
-    container.addSubview(lineNumbersView)
-    container.addSubview(codeView)
-    
-    lineNumbersView.translatesAutoresizingMaskIntoConstraints = false
-    codeView.translatesAutoresizingMaskIntoConstraints = false
-    
-    NSLayoutConstraint.activate([
-      lineNumbersView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-      lineNumbersView.topAnchor.constraint(equalTo: container.topAnchor),
-      lineNumbersView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-      
-      codeView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-      codeView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-      codeView.topAnchor.constraint(equalTo: container.topAnchor),
-      codeView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
-    ])
-    
-    context.coordinator.codeView = codeView
-    context.coordinator.lineNumbersView = lineNumbersView
-    
-    codeView.text = text
-    context.coordinator.updateLineNumbers()
-    context.coordinator.applyHighlighting()
-    
-    // Scroll synchronisieren
-    codeView.addObserver(context.coordinator, forKeyPath: "contentOffset", options: .new, context: nil)
-    
-    return container
+
+  func makeUIView(context: Context) -> EditorTextView {
+    let textView = EditorTextView()
+    textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    textView.autocorrectionType = .no
+    textView.autocapitalizationType = .none
+    textView.delegate = context.coordinator
+    textView.setText(text, keywords: keywords)
+    return textView
   }
-  
-  func updateUIView(_ uiView: UIView, context: Context) {
-    guard let codeView = context.coordinator.codeView else { return }
-    
-    if codeView.text != text {
-      codeView.text = text
-      context.coordinator.updateLineNumbers()
-      context.coordinator.applyHighlighting()
+
+  func updateUIView(_ uiView: EditorTextView, context: Context) {
+    if uiView.text != text {
+      uiView.setText(text, keywords: keywords)
     }
   }
-  
+
   func makeCoordinator() -> Coordinator {
-    Coordinator(parent: self)
+    Coordinator(self)
   }
-  
+
   class Coordinator: NSObject, UITextViewDelegate {
     var parent: SyntaxTextViewWithLineNumbersSync
-    weak var codeView: UITextView?
-    weak var lineNumbersView: UITextView?
-    private var lastLineCount: Int = 0
-    
-    init(parent: SyntaxTextViewWithLineNumbersSync) {
+
+    init(_ parent: SyntaxTextViewWithLineNumbersSync) {
       self.parent = parent
     }
-    
+
     func textViewDidChange(_ textView: UITextView) {
       parent.text = textView.text
-      updateLineNumbers()
-      applyHighlighting()
+      if let editor = textView as? EditorTextView {
+        editor.applyHighlighting(keywords: parent.keywords)
+      }
     }
-    
-    func updateLineNumbers() {
-  guard let codeView = codeView,
-        let lineNumbersView = lineNumbersView else { return }
-
-  let layoutManager = codeView.layoutManager
-  let textContainer = codeView.textContainer
-  let text = codeView.text as NSString
-
-  layoutManager.ensureLayout(for: textContainer)
-
-  var glyphIndex = 0
-  var lineNumber = 1
-  var output = ""
-
-  while glyphIndex < layoutManager.numberOfGlyphs {
-    var lineRange = NSRange()
-    layoutManager.lineFragmentRect(
-      forGlyphAt: glyphIndex,
-      effectiveRange: &lineRange
-    )
-
-    let charRange = layoutManager.characterRange(
-      forGlyphRange: lineRange,
-      actualGlyphRange: nil
-    )
-
-    if charRange.location == 0 ||
-       text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n" {
-      output += "\(lineNumber)"
-      lineNumber += 1
-    }
-
-    output += "\n"
-    glyphIndex = NSMaxRange(lineRange)
-  }
-
-  lineNumbersView.text = output
-
-  let realLineCount = max(lineNumber - 1, 1)
-
-  // Breite nur neu berechnen, wenn sich echte Zeilenanzahl geändert hat
-  if realLineCount != lastLineCount {
-    lastLineCount = realLineCount
-
-    let digits = String(realLineCount).count
-    let sample = String(repeating: "8", count: digits) as NSString
-    let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
-
-    lineNumbersView.constraints
-      .filter { $0.firstAttribute == .width }
-      .forEach { $0.isActive = false }
-
-    lineNumbersView.widthAnchor
-      .constraint(equalToConstant: width)
-      .isActive = true
-
-    codeView.textContainerInset.left = width + 4
   }
 }
-    
-    func applyHighlighting() {
-      guard let codeView = codeView else { return }
-      
-      let selected = codeView.selectedRange
-      let textStorage = codeView.textStorage
-      let fullRange = NSRange(location: 0, length: textStorage.length)
-      
-      textStorage.beginEditing()
-      textStorage.setAttributes([
-        .foregroundColor: UIColor.label,
-        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-      ], range: fullRange)
-      
-      for keyword in parent.keywords {
-        let pattern = "\\b\(keyword)\\b"
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-          let matches = regex.matches(in: codeView.text, range: fullRange)
-          for match in matches {
-            textStorage.addAttributes([
-              .foregroundColor: UIColor.systemBlue,
-              .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
-            ], range: match.range)
-          }
+
+class EditorTextView: UITextView {
+
+  private let gutterWidth: CGFloat = 50
+  private let gutterView = LineNumberGutterView()
+
+  override init(frame: CGRect, textContainer: NSTextContainer?) {
+    super.init(frame: frame, textContainer: textContainer)
+    commonInit()
+  }
+
+  required init?(coder: NSCoder) {
+    super.init(coder: coder)
+    commonInit()
+  }
+
+  private func commonInit() {
+    backgroundColor = .clear
+    textContainerInset = UIEdgeInsets(top: 8, left: gutterWidth + 8, bottom: 8, right: 8)
+    textContainer.lineFragmentPadding = 0
+
+    gutterView.textView = self
+    addSubview(gutterView)
+  }
+
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    gutterView.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height)
+    gutterView.setNeedsDisplay()
+  }
+
+  override func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
+    super.setContentOffset(contentOffset, animated: animated)
+    gutterView.setNeedsDisplay()
+  }
+
+  func setText(_ newText: String, keywords: [String]) {
+    text = newText
+    applyHighlighting(keywords: keywords)
+    gutterView.setNeedsDisplay()
+  }
+
+  func applyHighlighting(keywords: [String]) {
+    let selected = selectedRange
+    let storage = textStorage
+    let fullRange = NSRange(location: 0, length: storage.length)
+
+    storage.beginEditing()
+    storage.setAttributes([
+      .foregroundColor: UIColor.label,
+      .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    ], range: fullRange)
+
+    for keyword in keywords {
+      let pattern = "\\b\(keyword)\\b"
+      if let regex = try? NSRegularExpression(pattern: pattern) {
+        let matches = regex.matches(in: text, range: fullRange)
+        for match in matches {
+          storage.addAttributes([
+            .foregroundColor: UIColor.systemBlue,
+            .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
+          ], range: match.range)
         }
       }
-      
-      textStorage.endEditing()
-      codeView.selectedRange = selected
     }
-    
-    // Scroll synchronisieren
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-      if keyPath == "contentOffset" {
-        if let codeView = codeView, let lineNumbersView = lineNumbersView {
-          lineNumbersView.contentOffset = codeView.contentOffset
-        }
+
+    storage.endEditing()
+    selectedRange = selected
+  }
+}
+
+class LineNumberGutterView: UIView {
+
+  weak var textView: UITextView?
+
+  override func draw(_ rect: CGRect) {
+    guard let textView = textView else { return }
+
+    UIColor.secondarySystemBackground.setFill()
+    UIRectFill(rect)
+
+    let layoutManager = textView.layoutManager
+    let textContainer = textView.textContainer
+    layoutManager.ensureLayout(for: textContainer)
+
+    let visibleRect = CGRect(origin: textView.contentOffset,
+                             size: textView.bounds.size)
+
+    let glyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect,
+                                              in: textContainer)
+
+    var glyphIndex = glyphRange.location
+    var lineNumber = 1
+    let text = textView.text as NSString
+
+    while glyphIndex < glyphRange.upperBound {
+
+      var lineRange = NSRange()
+      let lineRect = layoutManager.lineFragmentRect(
+        forGlyphAt: glyphIndex,
+        effectiveRange: &lineRange
+      )
+
+      let charRange = layoutManager.characterRange(
+        forGlyphRange: lineRange,
+        actualGlyphRange: nil
+      )
+
+      if charRange.location == 0 ||
+         text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n" {
+
+        let y = lineRect.minY
+          - textView.contentOffset.y
+          + textView.textContainerInset.top
+
+        let attributes: [NSAttributedString.Key: Any] = [
+          .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
+          .foregroundColor: UIColor.secondaryLabel
+        ]
+
+        "\(lineNumber)".draw(
+          at: CGPoint(x: 6, y: y),
+          withAttributes: attributes
+        )
+
+        lineNumber += 1
       }
+
+      glyphIndex = NSMaxRange(lineRange)
     }
-    
-    deinit {
-      codeView?.removeObserver(self, forKeyPath: "contentOffset")
+
+    if text.length == 0 {
+      let attributes: [NSAttributedString.Key: Any] = [
+        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular),
+        .foregroundColor: UIColor.secondaryLabel
+      ]
+
+      "1".draw(at: CGPoint(x: 6, y: textView.textContainerInset.top),
+               withAttributes: attributes)
     }
   }
 }

@@ -140,6 +140,7 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     var parent: SyntaxTextViewWithLineNumbersSync
     weak var codeView: UITextView?
     weak var lineNumbersView: UITextView?
+    private var lastLineCount: Int = 0
     
     init(parent: SyntaxTextViewWithLineNumbersSync) {
       self.parent = parent
@@ -155,18 +156,20 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   guard let codeView = codeView,
         let lineNumbersView = lineNumbersView else { return }
 
-  guard let layoutManager = codeView.layoutManager else { return }
+  let layoutManager = codeView.layoutManager
   let textContainer = codeView.textContainer
   let text = codeView.text as NSString
 
-  var lineNumber = 1
-  var lineNumberText = ""
-  var index = 0
+  layoutManager.ensureLayout(for: textContainer)
 
-  while index < layoutManager.numberOfGlyphs {
+  var glyphIndex = 0
+  var lineNumber = 1
+  var output = ""
+
+  while glyphIndex < layoutManager.numberOfGlyphs {
     var lineRange = NSRange()
     layoutManager.lineFragmentRect(
-      forGlyphAt: index,
+      forGlyphAt: glyphIndex,
       effectiveRange: &lineRange
     )
 
@@ -177,31 +180,36 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 
     if charRange.location == 0 ||
        text.substring(with: NSRange(location: charRange.location - 1, length: 1)) == "\n" {
-      lineNumberText += "\(lineNumber)"
+      output += "\(lineNumber)"
       lineNumber += 1
     }
 
-    lineNumberText += "\n"
-    index = NSMaxRange(lineRange)
+    output += "\n"
+    glyphIndex = NSMaxRange(lineRange)
   }
 
-  lineNumbersView.text = lineNumberText
+  lineNumbersView.text = output
 
-  // Breite weiterhin nach maximaler Zeilenzahl berechnen
-  let maxLineNumber = max(lineNumber - 1, 1)
-  let digits = String(maxLineNumber).count
-  let sample = String(repeating: "8", count: digits) as NSString
-  let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
+  let realLineCount = max(lineNumber - 1, 1)
 
-  lineNumbersView.constraints
-    .filter { $0.firstAttribute == .width }
-    .forEach { $0.isActive = false }
+  // Breite nur neu berechnen, wenn sich echte Zeilenanzahl geändert hat
+  if realLineCount != lastLineCount {
+    lastLineCount = realLineCount
 
-  lineNumbersView.widthAnchor
-    .constraint(equalToConstant: width)
-    .isActive = true
+    let digits = String(realLineCount).count
+    let sample = String(repeating: "8", count: digits) as NSString
+    let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
 
-  codeView.textContainerInset.left = width + 4
+    lineNumbersView.constraints
+      .filter { $0.firstAttribute == .width }
+      .forEach { $0.isActive = false }
+
+    lineNumbersView.widthAnchor
+      .constraint(equalToConstant: width)
+      .isActive = true
+
+    codeView.textContainerInset.left = width + 4
+  }
 }
     
     func applyHighlighting() {

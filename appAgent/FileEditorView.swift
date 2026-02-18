@@ -136,24 +136,26 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     }
     
     func updateLineNumbers() {
-      guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
-      
-      let lines = codeView.text.components(separatedBy: "\n")
-      lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
-      
-      // Breite dynamisch anpassen
-      let digits = max(3, String(lines.count).count)
-      let sample = String(repeating: "8", count: digits) as NSString
-      let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 16
-      
-      if let constraint = lineNumbersView.constraints.first(where: { $0.firstAttribute == .width }) {
-        constraint.constant = width
-      } else {
-        lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
-      }
-      
-      codeView.textContainerInset.left = width + 4
-    }
+  guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
+  
+  let lines = codeView.text.components(separatedBy: "\n")
+  lineNumbersView.text = lines.enumerated().map { "\($0.offset + 1)" }.joined(separator: "\n")
+  
+  // Dynamische Breite basierend auf der maximalen Zeilennummer
+  let maxLineNumber = lines.count
+  let digits = String(maxLineNumber).count
+  let sample = String(repeating: "8", count: digits) as NSString
+  let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 16 // Puffer
+  
+  // Alte Width-Constraints entfernen
+  lineNumbersView.constraints.filter { $0.firstAttribute == .width }.forEach { $0.isActive = false }
+  
+  // Neue Constraint setzen
+  lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
+  
+  // CodeView linken Inset anpassen
+  codeView.textContainerInset.left = width + 4
+}
     
     func applyHighlighting() {
       guard let codeView = codeView else { return }

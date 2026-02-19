@@ -67,7 +67,7 @@ struct FileEditorView: View {
   }
 }
 
-// MARK: - Editor mit Gutter-Spalte, Highlighting, ohne Wordwrap
+// MARK: - Stabile EditorView mit fixem Gutter, Highlighting, kein Wordwrap
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
@@ -106,25 +106,32 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 }
 
 // -----------------------------------
-// Container für Gutter + CodeView
+// Container: fester Gutter + CodeView in separater ScrollView
 // -----------------------------------
-final class EditorContainer: UIScrollView {
+final class EditorContainer: UIView {
 
   let gutter = UITextView()
+  let scrollView = UIScrollView()
   let codeView = UITextView()
 
   override init(frame: CGRect) {
     super.init(frame: frame)
-    alwaysBounceVertical = true
-    alwaysBounceHorizontal = true
 
+    // Gutter fix links
     gutter.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     gutter.backgroundColor = UIColor.secondarySystemBackground
     gutter.isEditable = false
     gutter.isScrollEnabled = false
     gutter.textContainer.lineBreakMode = .byClipping
     gutter.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
+    addSubview(gutter)
 
+    // ScrollView für Code
+    scrollView.alwaysBounceVertical = true
+    scrollView.alwaysBounceHorizontal = true
+    addSubview(scrollView)
+
+    // CodeView
     codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     codeView.autocorrectionType = .no
     codeView.autocapitalizationType = .none
@@ -133,35 +140,35 @@ final class EditorContainer: UIScrollView {
     codeView.textContainer.widthTracksTextView = false
     codeView.backgroundColor = .clear
     codeView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+    scrollView.addSubview(codeView)
 
-    addSubview(gutter)
-    addSubview(codeView)
+    // Scroll synchronisation vertikal
+    scrollView.delegate = self
   }
 
   required init?(coder: NSCoder) { fatalError() }
 
   override func layoutSubviews() {
     super.layoutSubviews()
+    let gutterWidth: CGFloat = 50
+    gutter.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height)
+    scrollView.frame = CGRect(x: gutterWidth, y: 0,
+                              width: bounds.width - gutterWidth, height: bounds.height)
     updateLayoutAndHighlight([])
   }
 
   func updateLayoutAndHighlight(_ keywords: [String]) {
     codeView.sizeToFit()
-
     let contentWidth = codeView.contentSize.width
     let contentHeight = codeView.contentSize.height
+    codeView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
+    scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
 
+    // Zeilennummern
     let lines = max(codeView.text.components(separatedBy: "\n").count, 1)
     gutter.text = (1...lines).map { "\($0)" }.joined(separator: "\n")
 
-    let digits = String(lines).count
-    let sample = String(repeating: "8", count: digits) as NSString
-    let gutterWidth = sample.size(withAttributes: [.font: gutter.font!]).width + 24
-
-    gutter.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: contentHeight)
-    codeView.frame = CGRect(x: gutterWidth, y: 0, width: contentWidth, height: contentHeight)
-    contentSize = CGSize(width: gutterWidth + contentWidth, height: contentHeight)
-
+    // Highlighting nur sichtbare Zeilen
     applyHighlighting(keywords: keywords)
   }
 
@@ -190,6 +197,15 @@ final class EditorContainer: UIScrollView {
 
     textStorage.endEditing()
     codeView.selectedRange = selected
+  }
+}
+
+// -----------------------------------
+// ScrollView Delegate für vertikale Synchronisation
+// -----------------------------------
+extension EditorContainer: UIScrollViewDelegate {
+  func scrollViewDidScroll(_ scrollView: UIScrollView) {
+    gutter.contentOffset.y = scrollView.contentOffset.y
   }
 }
 

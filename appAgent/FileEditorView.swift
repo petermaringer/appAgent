@@ -67,7 +67,7 @@ struct FileEditorView: View {
   }
 }
 
-// MARK: - Stabile EditorView mit fixem Gutter, Highlighting, kein Wordwrap
+// MARK: - Editor mit fixem Gutter, kein Wordwrap, stabil bei Keyboard
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
@@ -78,6 +78,16 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     container.codeView.text = text
     context.coordinator.container = container
     context.coordinator.updateAll()
+
+    // Keyboard Handling
+    NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak container] notification in
+      guard let container = container else { return }
+      if let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+        let keyboardHeight = UIScreen.main.bounds.height - endFrame.origin.y
+        container.adjustForKeyboard(height: keyboardHeight)
+      }
+    }
+
     return container
   }
 
@@ -106,11 +116,11 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 }
 
 // -----------------------------------
-// Container: fester Gutter + CodeView in ScrollView
+// Editor Container
 // -----------------------------------
 final class EditorContainer: UIView {
 
-  private let gutterContainer = UIView()   // fixe Spalte links
+  private let gutterContainer = UIView()
   private var lineLabels: [UILabel] = []
 
   let scrollView = UIScrollView()
@@ -146,7 +156,6 @@ final class EditorContainer: UIView {
 
   override func layoutSubviews() {
     super.layoutSubviews()
-
     let gutterWidth: CGFloat = 50
     gutterContainer.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height)
     scrollView.frame = CGRect(x: gutterWidth, y: 0, width: bounds.width - gutterWidth, height: bounds.height)
@@ -168,7 +177,6 @@ final class EditorContainer: UIView {
   }
 
   private func adjustGutter(lines: Int) {
-    // alte Labels entfernen
     lineLabels.forEach { $0.removeFromSuperview() }
     lineLabels = []
 
@@ -185,7 +193,7 @@ final class EditorContainer: UIView {
       gutterContainer.addSubview(label)
       lineLabels.append(label)
     }
-    gutterContainer.frame.size.height = CGFloat(lines) * (codeView.font?.lineHeight ?? 16)
+    gutterContainer.frame.size.height = CGFloat(lines) * lineHeight
   }
 
   private func applyHighlighting(keywords: [String]) {
@@ -213,6 +221,13 @@ final class EditorContainer: UIView {
 
     textStorage.endEditing()
     codeView.selectedRange = selected
+  }
+
+  // Anpassung bei Keyboard
+  func adjustForKeyboard(height: CGFloat) {
+    let gutterWidth: CGFloat = 50
+    scrollView.frame = CGRect(x: gutterWidth, y: 0, width: bounds.width - gutterWidth, height: bounds.height - height)
+    // ContentOffset unverändert lassen → Cursor bleibt sichtbar
   }
 }
 

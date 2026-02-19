@@ -4,12 +4,17 @@ struct NewProjectView: View {
   @Binding var projects: [ProjectEngine]
   @Environment(\.dismiss) var dismiss
   @State private var projectName: String = ""
+  @State private var appIdentifier: String = ""
+  @State private var showingAlert = false
+  @State private var alertMessage = ""
   
   var body: some View {
     NavigationView {
       Form {
-        Section(header: Text("Neues Projekt")) {
+        Section(header: Text("Angaben zum Projekt")) {
           TextField("Projektname", text: $projectName)
+          TextField("App-Identifier (z.B. com.meinefirma.projekt)", text: $appIdentifier)
+            .autocapitalization(.none)
         }
       }
       .navigationTitle("Neues Projekt")
@@ -21,6 +26,11 @@ struct NewProjectView: View {
           Button("Abbrechen") { dismiss() }
         }
       }
+      .alert("Ungültige Eingabe", isPresented: $showingAlert) {
+        Button("OK", role: .cancel) { }
+      } message: {
+        Text(alertMessage)
+      }
     }
   }
   
@@ -28,23 +38,85 @@ struct NewProjectView: View {
     guard !projectName.isEmpty else { return }
     let fm = FileManager.default
     let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-    let newFolder = docs.appendingPathComponent(projectName)
     
+    // Projektname validieren
+    let validName = projectName.components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_")).inverted).joined()
+    guard !validName.isEmpty else {
+      alertMessage = "Der Projektname darf nur Buchstaben, Zahlen und Unterstriche enthalten."
+      showingAlert = true
+      return
+    }
+    
+    // App-Identifier validieren
+    let allowedIdentifierChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
+    let filteredIdentifier = appIdentifier.components(separatedBy: allowedIdentifierChars.inverted).joined()
+    guard !filteredIdentifier.isEmpty else {
+      alertMessage = "Der App-Identifier darf nur Buchstaben, Zahlen, Punkte, Bindestriche und Unterstriche enthalten."
+      showingAlert = true
+      return
+    }
+    
+    let newFolder = docs.appendingPathComponent(validName)
     try? fm.createDirectory(at: newFolder, withIntermediateDirectories: true)
     
-    // Default ContentView.swift anlegen
-    let contentFile = newFolder.appendingPathComponent("ContentView.swift")
+    // Unterordner nach Projektname anlegen
+    let projectSubfolder = newFolder.appendingPathComponent(validName)
+    try? fm.createDirectory(at: projectSubfolder, withIntermediateDirectories: true)
+    
+    // ContentView.swift anlegen
+    let contentFile = projectSubfolder.appendingPathComponent("ContentView.swift")
     let defaultContent = """
     import SwiftUI
 
     struct ContentView: View {
       var body: some View {
-        Text("Hello, \(projectName)!")
+        Text("Hello, \(validName)!")
           .padding()
       }
     }
     """
     try? defaultContent.write(to: contentFile, atomically: true, encoding: .utf8)
+    
+    // {Projektname}App.swift anlegen
+    let appFile = projectSubfolder.appendingPathComponent("\(validName)App.swift")
+    let defaultAppContent = """
+    import SwiftUI
+
+    @main
+    struct \(validName)App: App {
+      // App-Identifier: \(filteredIdentifier)
+      var body: some Scene {
+        WindowGroup {
+          ContentView()
+        }
+      }
+    }
+    """
+    try? defaultAppContent.write(to: appFile, atomically: true, encoding: .utf8)
+    
+    // project.yml im Hauptordner anlegen
+    let ymlFile = newFolder.appendingPathComponent("project.yml")
+    let ymlContent = """
+    name: \(validName)
+    options:
+      minimumXcodeGenVersion: "2.42.0"
+      bundleIdPrefix: \(filteredIdentifier)
+      deploymentTarget:
+        iOS: "16.0"
+    targets:
+      \(validName):
+        type: application
+        platform: iOS
+        sources:
+          - path: \(validName)
+            excludes:
+              - Excludes
+        settings:
+          CODE_SIGN_ENTITLEMENTS: \(validName)/App.entitlements
+        scheme:
+          configVariants:
+    """
+    try? ymlContent.write(to: ymlFile, atomically: true, encoding: .utf8)
     
     let engine = ProjectEngine(projectFolder: newFolder)
     projects.append(engine)

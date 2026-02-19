@@ -2,21 +2,23 @@ import SwiftUI
 
 struct FileListView: View {
   let projectFolder: URL
-  @State private var files: [IdentifiableFile] = []
-  @State private var selectedFile: IdentifiableFile?
-  @State private var targetFile: URL?
+  @State private var rootFiles: [FileNode] = []
+  @State private var selectedFile: FileNode?
 
   @State private var showingEditor: Bool = false
-  @State private var showingRenameAlert: Bool = false
-  @State private var renameText: String = ""
-  @State private var fileToRename: IdentifiableFile?
 
-  struct IdentifiableFile: Identifiable, Equatable {
+  class FileNode: Identifiable, ObservableObject {
     let file: URL
-    var level: Int = 0
+    @Published var children: [FileNode] = []
+    @Published var isExpanded: Bool = false
+    @Published var isFolder: Bool = false
+
     var id: String { file.absoluteString }
-    var isFolder: Bool { file.hasDirectoryPath }
-    var isExpanded: Bool = false
+
+    init(file: URL) {
+      self.file = file
+      self.isFolder = file.hasDirectoryPath
+    }
   }
 
   var body: some View {
@@ -26,131 +28,130 @@ struct FileListView: View {
         .padding(.bottom, 5)
 
       List {
-        ForEach(files) { item in
-          FileRow(item: item)
-            .padding(.leading, CGFloat(item.level * 16))
-            .contentShape(Rectangle())
-            .onTapGesture {
-              if item.isFolder {
-                toggleFolder(item)
-              } else {
-                selectedFile = item
-              }
+        OutlineGroup(rootFiles, children: \.children) { node in
+          HStack {
+            Image(systemName: node.isFolder ? (node.isExpanded ? "folder.open" : "folder") : "doc")
+              .foregroundColor(node.isFolder ? .blue : .primary)
+
+            Text(node.file.lastPathComponent)
+              .foregroundColor(isTargetFile(node) ? .yellow : (node.isFolder ? .blue : .primary))
+              .fontWeight(isTargetFile(node) ? .bold : .regular)
+
+            Spacer()
+
+            if isTargetFile(node) {
+              Image(systemName: "star.fill")
+                .foregroundColor(.yellow)
             }
-            .swipeActions(edge: .trailing) {
-              Button("Löschen", role: .destructive) { delete(item) }
-              Button("Umbenennen") {
-                fileToRename = item
-                renameText = item.file.lastPathComponent
-                showingRenameAlert = true
-              }
+          }
+          .padding(.leading, CGFloat(level(of: node)) * 16)
+          .contentShape(Rectangle())
+          .onTapGesture {
+            if node.isFolder {
+              node.isExpanded.toggle()
+            } else {
+              selectedFile = node
             }
-            .onDrag { NSItemProvider(object: item.file as NSURL) }
-            .onDrop(of: [.fileURL], delegate: FileDropDelegate(item: item, files: $files))
+          }
+          .onDrag {
+            return NSItemProvider(object: node.file as NSURL)
+          }
+          .onDrop(of: [.fileURL], delegate: FileDropDelegate(target: node, rootNodes: $rootFiles))
+          .swipeActions(edge: .trailing) {
+            if !node.isFolder {
+              Button(role: .destructive) { deleteNode(node) } label: { Label("Löschen", systemImage: "trash") }
+            }
+            Button { renameNode(node) } label: { Label("Umbenennen", systemImage: "pencil") }
+          }
         }
       }
     }
     .onAppear(perform: loadFiles)
-    .sheet(item: $selectedFile) { item in
-      FileEditorView(fileURL: item.file)
-    }
-    .alert("Umbenennen", isPresented: $showingRenameAlert, actions: {
-      TextField("Neuer Name", text: $renameText)
-      Button("OK") { if let file = fileToRename?.file { rename(file: file, to: renameText) } }
-      Button("Abbrechen", role: .cancel) {}
-    }, message: { Text("Gib einen neuen Namen ein") })
-  }
-
-  @ViewBuilder
-  func FileRow(item: IdentifiableFile) -> some View {
-    HStack {
-      if item.isFolder {
-        Image(systemName: item.isExpanded ? "folder.fill" : "folder")
-          .foregroundColor(.blue)
-      } else {
-        Image(systemName: "doc.text")
-          .foregroundColor(.gray)
-      }
-
-      Text(item.file.lastPathComponent)
-        .foregroundColor(item.file == targetFile ? .yellow : (item.isFolder ? .blue : .primary))
-        .fontWeight(item.file == targetFile ? .bold : .regular)
-
-      Spacer()
-
-      if item.file == targetFile {
-        Image(systemName: "star.fill")
-          .foregroundColor(.yellow)
-      }
+    .sheet(item: $selectedFile) { node in
+      FileEditorView(fileURL: node.file)
     }
   }
 
-  // MARK: - File Operations
+  func isTargetFile(_ node: FileNode) -> Bool {
+    return node.file.lastPathComponent == "ContentView.swift"
+  }
+
+  func level(of node: FileNode) -> Int {
+    var count = 0
+    var parent = findParent(of: node, in: rootFiles)
+    while parent != nil {
+      count += 1
+      parent = findParent(of: parent!, in: rootFiles)
+    }
+    return count
+  }
+
+  func findParent(of node: FileNode, in nodes: [FileNode]) -> FileNode? {
+    for n in nodes {
+      if n.children.contains(where: { $0.id == node.id }) { return n }
+      if let found = findParent(of: node, in: n.children) { return found }
+    }
+    return nil
+  }
+
   func loadFiles() {
-    files = flattenFiles(at: projectFolder, level: 0)
-    if let lastModified = files.filter({ !$0.isFolder }).max(by: { f1, f2 in
-      let date1 = (try? f1.file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-      let date2 = (try? f2.file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-      return date1 < date2
-    }) {
-      targetFile = lastModified.file
-    }
+    rootFiles = buildNodes(at: projectFolder)
   }
 
-  func flattenFiles(at url: URL, level: Int) -> [IdentifiableFile] {
+  func buildNodes(at url: URL) -> [FileNode] {
     let fm = FileManager.default
-    guard let folderContents = try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) else { return [] }
-
-    var list: [IdentifiableFile] = []
-    for file in folderContents.sorted(by: { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }) {
-      var item = IdentifiableFile(file: file, level: level, isExpanded: false)
-      list.append(item)
-      if file.hasDirectoryPath && item.isExpanded {
-        list.append(contentsOf: flattenFiles(at: file, level: level + 1))
+    guard let contents = try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) else { return [] }
+    return contents.map { file in
+      let node = FileNode(file: file)
+      if node.isFolder {
+        node.children = buildNodes(at: file)
       }
+      return node
     }
-    return list
   }
 
-  func toggleFolder(_ item: IdentifiableFile) {
-    guard let index = files.firstIndex(where: { $0.id == item.id }) else { return }
-    files[index].isExpanded.toggle()
-    files = flattenFiles(at: projectFolder, level: 0)
-  }
-
-  func delete(_ item: IdentifiableFile) {
-    try? FileManager.default.removeItem(at: item.file)
-    loadFiles()
-  }
-
-  func rename(file: URL, to newName: String) {
-    let newURL = file.deletingLastPathComponent().appendingPathComponent(newName)
-    try? FileManager.default.moveItem(at: file, to: newURL)
-    loadFiles()
-  }
-}
-
-// MARK: - Drag & Drop Delegate
-struct FileDropDelegate: DropDelegate {
-  let item: FileListView.IdentifiableFile
-  @Binding var files: [FileListView.IdentifiableFile]
-
-  func performDrop(info: DropInfo) -> Bool {
-    guard let itemProvider = info.itemProviders(for: [.fileURL]).first else { return false }
-    itemProvider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, error in
-      guard let data = data as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-      moveFile(url: url, to: item.file)
+  func deleteNode(_ node: FileNode) {
+    try? FileManager.default.removeItem(at: node.file)
+    if let parent = findParent(of: node, in: rootFiles) {
+      parent.children.removeAll { $0.id == node.id }
+    } else {
+      rootFiles.removeAll { $0.id == node.id }
     }
-    return true
   }
 
-  private func moveFile(url: URL, to destination: URL) {
-    let fm = FileManager.default
-    let targetURL = destination.hasDirectoryPath ? destination.appendingPathComponent(url.lastPathComponent) : destination.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent)
-    try? fm.moveItem(at: url, to: targetURL)
-    DispatchQueue.main.async {
-      // force refresh
-      files = files
+  func renameNode(_ node: FileNode) {
+    let alert = UIAlertController(title: "Umbenennen", message: "Neuer Name", preferredStyle: .alert)
+    alert.addTextField { textField in
+      textField.text = node.file.lastPathComponent
+    }
+    alert.addAction(UIAlertAction(title: "Abbrechen", style: .cancel))
+    alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+      guard let newName = alert.textFields?.first?.text, !newName.isEmpty else { return }
+      let newURL = node.file.deletingLastPathComponent().appendingPathComponent(newName)
+      try? FileManager.default.moveItem(at: node.file, to: newURL)
+      node.file = newURL
+    })
+    UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
+  }
+
+  struct FileDropDelegate: DropDelegate {
+    let target: FileNode
+    @Binding var rootNodes: [FileNode]
+
+    func performDrop(info: DropInfo) -> Bool {
+      guard target.isFolder else { return false }
+      for item in info.itemProviders(for: [.fileURL]) {
+        item.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
+          if let urlData = data as? Data, let sourceURL = URL(dataRepresentation: urlData, relativeTo: nil) {
+            let destURL = target.file.appendingPathComponent(sourceURL.lastPathComponent)
+            try? FileManager.default.moveItem(at: sourceURL, to: destURL)
+            DispatchQueue.main.async {
+              target.children.append(FileNode(file: destURL))
+            }
+          }
+        }
+      }
+      return true
     }
   }
 }

@@ -14,7 +14,7 @@ struct FileEditorView: View {
         .font(.headline)
         .padding()
 
-      SyntaxTextViewWithLineNumbersSync(text: $codeText, keywords: keywords)
+      SyntaxTextViewSimpleEditor(text: $codeText, keywords: keywords)
       //CodeEditorContainerView(codeText: $codeText, keywords: keywords)
         .frame(minHeight: 300)
         .cornerRadius(8)
@@ -68,175 +68,84 @@ struct FileEditorView: View {
 }
 
 // MARK: - Editor mit fixem Gutter, kein Wordwrap, stabil bei Keyboard
-struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
+//struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
+// MARK: - Einfacher Editor ohne Zeilennummern, Wordwrap aus, Highlighting
+struct SyntaxTextViewSimpleEditor: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
 
-  func makeUIView(context: Context) -> EditorContainer {
-    let container = EditorContainer()
-    container.codeView.delegate = context.coordinator
-    container.codeView.text = text
-    context.coordinator.container = container
-    context.coordinator.updateAll()
+  func makeUIView(context: Context) -> UITextView {
+    let codeView = UITextView()
+    codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    codeView.autocorrectionType = .no
+    codeView.autocapitalizationType = .none
+    codeView.isScrollEnabled = true
+    codeView.textContainer.lineBreakMode = .byClipping // keine Wordwrap
+    codeView.textContainer.widthTracksTextView = false
+    codeView.backgroundColor = UIColor.systemBackground
+    codeView.delegate = context.coordinator
+    codeView.text = text
 
     // Keyboard Handling
-    NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak container] notification in
-      guard let container = container else { return }
+    NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak codeView] notification in
+      guard let codeView = codeView else { return }
       if let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
         let keyboardHeight = UIScreen.main.bounds.height - endFrame.origin.y
-        container.adjustForKeyboard(height: keyboardHeight)
+        codeView.frame.size.height = UIScreen.main.bounds.height - keyboardHeight
       }
     }
 
-    return container
+    context.coordinator.codeView = codeView
+    context.coordinator.applyHighlighting(keywords: keywords)
+    return codeView
   }
 
-  func updateUIView(_ uiView: EditorContainer, context: Context) {
-    if uiView.codeView.text != text {
-      uiView.codeView.text = text
-      context.coordinator.updateAll()
+  func updateUIView(_ uiView: UITextView, context: Context) {
+    if uiView.text != text {
+      uiView.text = text
+      context.coordinator.applyHighlighting(keywords: keywords)
     }
   }
 
   func makeCoordinator() -> Coordinator { Coordinator(self) }
 
   class Coordinator: NSObject, UITextViewDelegate {
-    var parent: SyntaxTextViewWithLineNumbersSync
-    weak var container: EditorContainer?
+    var parent: SyntaxTextViewSimpleEditor
+    weak var codeView: UITextView?
 
-    init(_ parent: SyntaxTextViewWithLineNumbersSync) { self.parent = parent }
+    init(_ parent: SyntaxTextViewSimpleEditor) { self.parent = parent }
 
     func textViewDidChange(_ textView: UITextView) {
       parent.text = textView.text
-      updateAll()
+      applyHighlighting(keywords: parent.keywords)
     }
 
-    func updateAll() { container?.updateLayoutAndHighlight(parent.keywords) }
-  }
-}
+    func applyHighlighting(keywords: [String]) {
+      guard let codeView = codeView, !keywords.isEmpty else { return }
+      let selected = codeView.selectedRange
+      let textStorage = codeView.textStorage
+      let fullRange = NSRange(location: 0, length: textStorage.length)
 
-// -----------------------------------
-// Editor Container
-// -----------------------------------
-final class EditorContainer: UIView {
+      textStorage.beginEditing()
+      textStorage.setAttributes([.foregroundColor: UIColor.label,
+                                 .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)],
+                                range: fullRange)
 
-  private let gutterContainer = UIView()
-  private var lineLabels: [UILabel] = []
-
-  let scrollView = UIScrollView()
-  let codeView = UITextView()
-
-  override init(frame: CGRect) {
-    super.init(frame: frame)
-
-    // Gutter fix links
-    gutterContainer.backgroundColor = UIColor.secondarySystemBackground
-    addSubview(gutterContainer)
-
-    // ScrollView für Code
-    scrollView.alwaysBounceVertical = true
-    scrollView.alwaysBounceHorizontal = true
-    addSubview(scrollView)
-
-    // CodeView
-    codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    codeView.autocorrectionType = .no
-    codeView.autocapitalizationType = .none
-    codeView.isScrollEnabled = false
-    codeView.textContainer.lineBreakMode = .byClipping
-    codeView.textContainer.widthTracksTextView = false
-    codeView.backgroundColor = .clear
-    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
-    scrollView.addSubview(codeView)
-
-    scrollView.delegate = self
-  }
-
-  required init?(coder: NSCoder) { fatalError() }
-
-  override func layoutSubviews() {
-    super.layoutSubviews()
-    let gutterWidth: CGFloat = 50
-    gutterContainer.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height)
-    scrollView.frame = CGRect(x: gutterWidth, y: 0, width: bounds.width - gutterWidth, height: bounds.height)
-    updateLayoutAndHighlight([])
-  }
-
-  func updateLayoutAndHighlight(_ keywords: [String]) {
-    // CodeView ContentSize anpassen
-    codeView.sizeToFit()
-    scrollView.contentSize = codeView.bounds.size
-    codeView.frame = CGRect(origin: .zero, size: codeView.bounds.size)
-
-    // Zeilennummern aktualisieren
-    let lines = max(codeView.text.components(separatedBy: "\n").count, 1)
-    adjustGutter(lines: lines)
-
-    // Highlighting nur sichtbare Zeilen
-    applyHighlighting(keywords: keywords)
-  }
-
-  private func adjustGutter(lines: Int) {
-    lineLabels.forEach { $0.removeFromSuperview() }
-    lineLabels = []
-
-    let font = codeView.font ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    let lineHeight = font.lineHeight
-
-    for i in 0..<lines {
-      let label = UILabel()
-      label.font = font
-      label.textColor = .gray
-      label.textAlignment = .right
-      label.text = "\(i+1)"
-      label.frame = CGRect(x: 0, y: CGFloat(i) * lineHeight, width: gutterContainer.bounds.width - 4, height: lineHeight)
-      gutterContainer.addSubview(label)
-      lineLabels.append(label)
-    }
-    gutterContainer.frame.size.height = CGFloat(lines) * lineHeight
-  }
-
-  private func applyHighlighting(keywords: [String]) {
-    guard !keywords.isEmpty else { return }
-    let selected = codeView.selectedRange
-    let textStorage = codeView.textStorage
-    let fullRange = NSRange(location: 0, length: textStorage.length)
-
-    textStorage.beginEditing()
-    textStorage.setAttributes([.foregroundColor: UIColor.label,
-                               .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)],
-                              range: fullRange)
-
-    for keyword in keywords {
-      let pattern = "\\b\(keyword)\\b"
-      if let regex = try? NSRegularExpression(pattern: pattern) {
-        let matches = regex.matches(in: codeView.text, range: fullRange)
-        for match in matches {
-          textStorage.addAttributes([.foregroundColor: UIColor.systemBlue,
-                                     .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)],
-                                    range: match.range)
+      for keyword in keywords {
+        let pattern = "\\b\(keyword)\\b"
+        if let regex = try? NSRegularExpression(pattern: pattern) {
+          let matches = regex.matches(in: codeView.text, range: fullRange)
+          for match in matches {
+            textStorage.addAttributes([.foregroundColor: UIColor.systemBlue,
+                                       .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)],
+                                      range: match.range)
+          }
         }
       }
+
+      textStorage.endEditing()
+      codeView.selectedRange = selected
     }
-
-    textStorage.endEditing()
-    codeView.selectedRange = selected
-  }
-
-  // Anpassung bei Keyboard
-  func adjustForKeyboard(height: CGFloat) {
-    let gutterWidth: CGFloat = 50
-    scrollView.frame = CGRect(x: gutterWidth, y: 0, width: bounds.width - gutterWidth, height: bounds.height - height)
-    // ContentOffset unverändert lassen → Cursor bleibt sichtbar
-  }
-}
-
-// -----------------------------------
-// ScrollView Delegate: vertikale Synchronisation
-// -----------------------------------
-extension EditorContainer: UIScrollViewDelegate {
-  func scrollViewDidScroll(_ scrollView: UIScrollView) {
-    gutterContainer.frame.origin.y = -scrollView.contentOffset.y
   }
 }
 

@@ -106,11 +106,13 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 }
 
 // -----------------------------------
-// Container: fester Gutter + CodeView in separater ScrollView
+// Container: fester Gutter + CodeView in ScrollView
 // -----------------------------------
 final class EditorContainer: UIView {
 
-  let gutter = UITextView()
+  private let gutterContainer = UIView()   // fixe Spalte links
+  private var lineLabels: [UILabel] = []
+
   let scrollView = UIScrollView()
   let codeView = UITextView()
 
@@ -118,13 +120,8 @@ final class EditorContainer: UIView {
     super.init(frame: frame)
 
     // Gutter fix links
-    gutter.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    gutter.backgroundColor = UIColor.secondarySystemBackground
-    gutter.isEditable = false
-    gutter.isScrollEnabled = false
-    gutter.textContainer.lineBreakMode = .byClipping
-    gutter.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
-    addSubview(gutter)
+    gutterContainer.backgroundColor = UIColor.secondarySystemBackground
+    addSubview(gutterContainer)
 
     // ScrollView für Code
     scrollView.alwaysBounceVertical = true
@@ -142,7 +139,6 @@ final class EditorContainer: UIView {
     codeView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
     scrollView.addSubview(codeView)
 
-    // Scroll synchronisation vertikal
     scrollView.delegate = self
   }
 
@@ -150,26 +146,46 @@ final class EditorContainer: UIView {
 
   override func layoutSubviews() {
     super.layoutSubviews()
+
     let gutterWidth: CGFloat = 50
-    gutter.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height)
-    scrollView.frame = CGRect(x: gutterWidth, y: 0,
-                              width: bounds.width - gutterWidth, height: bounds.height)
+    gutterContainer.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: bounds.height)
+    scrollView.frame = CGRect(x: gutterWidth, y: 0, width: bounds.width - gutterWidth, height: bounds.height)
     updateLayoutAndHighlight([])
   }
 
   func updateLayoutAndHighlight(_ keywords: [String]) {
+    // CodeView ContentSize anpassen
     codeView.sizeToFit()
-    let contentWidth = codeView.contentSize.width
-    let contentHeight = codeView.contentSize.height
-    codeView.frame = CGRect(x: 0, y: 0, width: contentWidth, height: contentHeight)
-    scrollView.contentSize = CGSize(width: contentWidth, height: contentHeight)
+    scrollView.contentSize = codeView.bounds.size
+    codeView.frame = CGRect(origin: .zero, size: codeView.bounds.size)
 
-    // Zeilennummern
+    // Zeilennummern aktualisieren
     let lines = max(codeView.text.components(separatedBy: "\n").count, 1)
-    gutter.text = (1...lines).map { "\($0)" }.joined(separator: "\n")
+    adjustGutter(lines: lines)
 
     // Highlighting nur sichtbare Zeilen
     applyHighlighting(keywords: keywords)
+  }
+
+  private func adjustGutter(lines: Int) {
+    // alte Labels entfernen
+    lineLabels.forEach { $0.removeFromSuperview() }
+    lineLabels = []
+
+    let font = codeView.font ?? UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    let lineHeight = font.lineHeight
+
+    for i in 0..<lines {
+      let label = UILabel()
+      label.font = font
+      label.textColor = .gray
+      label.textAlignment = .right
+      label.text = "\(i+1)"
+      label.frame = CGRect(x: 0, y: CGFloat(i) * lineHeight, width: gutterContainer.bounds.width - 4, height: lineHeight)
+      gutterContainer.addSubview(label)
+      lineLabels.append(label)
+    }
+    gutterContainer.frame.size.height = CGFloat(lines) * (codeView.font?.lineHeight ?? 16)
   }
 
   private func applyHighlighting(keywords: [String]) {
@@ -201,11 +217,11 @@ final class EditorContainer: UIView {
 }
 
 // -----------------------------------
-// ScrollView Delegate für vertikale Synchronisation
+// ScrollView Delegate: vertikale Synchronisation
 // -----------------------------------
 extension EditorContainer: UIScrollViewDelegate {
   func scrollViewDidScroll(_ scrollView: UIScrollView) {
-    gutter.contentOffset.y = scrollView.contentOffset.y
+    gutterContainer.frame.origin.y = -scrollView.contentOffset.y
   }
 }
 

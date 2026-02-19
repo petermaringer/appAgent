@@ -14,7 +14,8 @@ struct FileEditorView: View {
         .font(.headline)
         .padding()
 
-      SyntaxTextViewWithLineNumbersSync(text: $codeText, keywords: keywords)
+      //SyntaxTextViewWithLineNumbersSync(text: $codeText, keywords: keywords)
+      CodeEditorContainerView(codeText: $codeText, keywords: keywords)
         .frame(minHeight: 300)
         .cornerRadius(8)
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
@@ -66,8 +67,164 @@ struct FileEditorView: View {
   }
 }
 
+//import SwiftUI
+import UIKit
+
+// -----------------------------------
+// SwiftUI Container
+// -----------------------------------
+struct CodeEditorContainerView: UIViewRepresentable {
+  @Binding var codeText: String
+  let keywords: [String]
+
+  func makeUIView(context: Context) -> CodeEditorView {
+    let editor = CodeEditorView()
+    editor.codeText = codeText
+    editor.keywords = keywords
+    editor.delegate = context.coordinator
+    return editor
+  }
+
+  func updateUIView(_ uiView: CodeEditorView, context: Context) {
+    uiView.codeText = codeText
+    uiView.updateLineNumbers()
+  }
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator(self)
+  }
+
+  class Coordinator: NSObject, CodeEditorViewDelegate {
+    var parent: CodeEditorContainerView
+
+    init(_ parent: CodeEditorContainerView) {
+      self.parent = parent
+    }
+
+    func codeDidChange(_ newText: String) {
+      parent.codeText = newText
+    }
+  }
+}
+
+// -----------------------------------
+// Protocol für Delegate
+// -----------------------------------
+protocol CodeEditorViewDelegate: AnyObject {
+  func codeDidChange(_ newText: String)
+}
+
+// -----------------------------------
+// UIKit Editor mit Overlay
+// -----------------------------------
+class CodeEditorView: UIView, UITextViewDelegate {
+  var codeText: String = "" {
+    didSet { textView.text = codeText }
+  }
+  var keywords: [String] = []
+  weak var delegate: CodeEditorViewDelegate?
+
+  private let textView = UITextView()
+  private let lineNumberOverlay = LineNumberOverlayView()
+
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    setup()
+  }
+
+  required init?(coder: NSCoder) {
+    super.init(coder: coder)
+    setup()
+  }
+
+  private func setup() {
+    textView.delegate = self
+    textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    textView.autocorrectionType = .no
+    textView.backgroundColor = .clear
+    addSubview(textView)
+    addSubview(lineNumberOverlay)
+
+    textView.translatesAutoresizingMaskIntoConstraints = false
+    lineNumberOverlay.translatesAutoresizingMaskIntoConstraints = false
+
+    NSLayoutConstraint.activate([
+      textView.leadingAnchor.constraint(equalTo: leadingAnchor),
+      textView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      textView.topAnchor.constraint(equalTo: topAnchor),
+      textView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+      lineNumberOverlay.leadingAnchor.constraint(equalTo: leadingAnchor),
+      lineNumberOverlay.topAnchor.constraint(equalTo: topAnchor),
+      lineNumberOverlay.bottomAnchor.constraint(equalTo: bottomAnchor),
+      lineNumberOverlay.widthAnchor.constraint(equalToConstant: 50)
+    ])
+  }
+
+  func textViewDidChange(_ textView: UITextView) {
+    codeText = textView.text
+    delegate?.codeDidChange(codeText)
+    updateLineNumbers()
+  }
+
+  func updateLineNumbers() {
+    lineNumberOverlay.update(for: textView)
+  }
+}
+
+// -----------------------------------
+// Overlay für Zeilennummern (dynamische Breite)
+// -----------------------------------
+class LineNumberOverlayView: UIView {
+  private var lineLabels: [UILabel] = []
+  private let padding: CGFloat = 4
+
+  func update(for textView: UITextView) {
+    let layoutManager = textView.layoutManager
+    let textStorage = textView.textStorage
+
+    let numberOfLines = textStorage.string.components(separatedBy: "\n").count
+    let maxDigits = "\(numberOfLines)".count
+
+    // Berechne Zeichenbreite
+    let charWidth = ("0" as NSString).size(withAttributes: [.font: textView.font!]).width
+    let width = CGFloat(maxDigits) * charWidth + padding
+
+    // Overlay-Breite anpassen
+    NSLayoutConstraint.deactivate(self.constraints.filter { $0.firstAttribute == .width })
+    self.widthAnchor.constraint(equalToConstant: width).isActive = true
+
+    // Labels erstellen/anpassen
+    if lineLabels.count != numberOfLines {
+      lineLabels.forEach { $0.removeFromSuperview() }
+      lineLabels = (0..<numberOfLines).map { i in
+        let label = UILabel()
+        label.font = textView.font
+        label.textColor = .gray
+        label.textAlignment = .right
+        label.text = "\(i+1)"
+        addSubview(label)
+        return label
+      }
+    }
+
+    // Positionierung
+    var glyphIndex = 0
+    for (i, label) in lineLabels.enumerated() {
+      if glyphIndex >= layoutManager.numberOfGlyphs { break }
+      var lineRange = NSRange(location: 0, length: 0)
+      let lineRect = layoutManager.lineFragmentUsedRect(forGlyphAt: glyphIndex, effectiveRange: &lineRange)
+      label.frame = CGRect(x: 0,
+                           y: lineRect.minY + textView.textContainerInset.top,
+                           width: width - padding,
+                           height: lineRect.height)
+      glyphIndex = NSMaxRange(lineRange)
+    }
+  }
+}
+
 // MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern
-struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
+/*struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
   
@@ -226,4 +383,4 @@ func updateLineNumbers() {
     codeView?.removeObserver(self, forKeyPath: "contentOffset")
   }
 }
-}
+}*/

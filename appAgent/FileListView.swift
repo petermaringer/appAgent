@@ -25,26 +25,28 @@ struct FileListView: View {
           HStack {
             if item.isDirectory {
               Image(systemName: expandedFolders.contains(item.url) ? "folder.open" : "folder")
-                .foregroundColor(.orange)
-                .onTapGesture {
-                  toggleFolder(item.url)
-                }
+                .foregroundColor(.blue)
             } else {
               Image(systemName: "doc.text")
                 .foregroundColor(.primary)
             }
-            Text(String(repeating: "  ", count: item.depth) + item.url.lastPathComponent)
+            Text(item.url.lastPathComponent)
               .fontWeight(item.url == targetFile ? .bold : .regular)
-              .foregroundColor(item.url == targetFile ? .blue : .primary)
+              .foregroundColor(item.isDirectory ? .blue : (item.url == targetFile ? .yellow : .primary))
             Spacer()
             if item.url == targetFile {
               Image(systemName: "star.fill")
                 .foregroundColor(.yellow)
             }
           }
+          .padding(.leading, CGFloat(item.depth) * 16)
           .contentShape(Rectangle())
           .onTapGesture {
-            selectedItem = item
+            if item.isDirectory {
+              toggleFolder(item.url)
+            } else {
+              selectedItem = item
+            }
           }
         }
       }

@@ -4,12 +4,12 @@ struct FileListView: View {
   let projectFolder: URL
   @State private var rootFiles: [FileNode] = []
   @State private var selectedFile: FileNode?
-
+  @State private var targetFile: URL?
   @State private var showingEditor: Bool = false
 
   class FileNode: Identifiable, ObservableObject {
-    let file: URL
-    @Published var children: [FileNode] = []
+    var file: URL
+    @Published var children: [FileNode]? = nil
     @Published var isExpanded: Bool = false
     @Published var isFolder: Bool = false
 
@@ -30,16 +30,13 @@ struct FileListView: View {
       List {
         OutlineGroup(rootFiles, children: \.children) { node in
           HStack {
-            Image(systemName: node.isFolder ? (node.isExpanded ? "folder.open" : "folder") : "doc")
+            Image(systemName: node.isFolder ? (node.isExpanded ? "folder.open" : "folder") : "doc.text")
               .foregroundColor(node.isFolder ? .blue : .primary)
-
             Text(node.file.lastPathComponent)
-              .foregroundColor(isTargetFile(node) ? .yellow : (node.isFolder ? .blue : .primary))
-              .fontWeight(isTargetFile(node) ? .bold : .regular)
-
+              .foregroundColor(node.file == targetFile ? .yellow : (node.isFolder ? .blue : .primary))
+              .fontWeight(node.file == targetFile ? .bold : .regular)
             Spacer()
-
-            if isTargetFile(node) {
+            if node.file == targetFile {
               Image(systemName: "star.fill")
                 .foregroundColor(.yellow)
             }
@@ -48,111 +45,106 @@ struct FileListView: View {
           .contentShape(Rectangle())
           .onTapGesture {
             if node.isFolder {
-              node.isExpanded.toggle()
+              withAnimation { node.isExpanded.toggle() }
             } else {
               selectedFile = node
             }
           }
-          .onDrag {
-            return NSItemProvider(object: node.file as NSURL)
-          }
-          .onDrop(of: [.fileURL], delegate: FileDropDelegate(target: node, rootNodes: $rootFiles))
-          .swipeActions(edge: .trailing) {
+          .swipeActions {
             if !node.isFolder {
               Button(role: .destructive) { deleteNode(node) } label: { Label("Löschen", systemImage: "trash") }
             }
-            Button { renameNode(node) } label: { Label("Umbenennen", systemImage: "pencil") }
           }
+          .onDrag {
+            node.file as NSURL
+          }
+          .onDrop(of: [.fileURL], delegate: FileDropDelegate(targetNode: node))
         }
       }
     }
     .onAppear(perform: loadFiles)
-    .sheet(item: $selectedFile) { node in
-      FileEditorView(fileURL: node.file)
+    .sheet(item: $selectedFile) { item in
+      FileEditorView(fileURL: item.file)
     }
-  }
-
-  func isTargetFile(_ node: FileNode) -> Bool {
-    return node.file.lastPathComponent == "ContentView.swift"
   }
 
   func level(of node: FileNode) -> Int {
-    var count = 0
-    var parent = findParent(of: node, in: rootFiles)
-    while parent != nil {
-      count += 1
-      parent = findParent(of: parent!, in: rootFiles)
+    var level = 0
+    var current = node.file.deletingLastPathComponent()
+    while current.path.hasPrefix(projectFolder.path) && current.path != projectFolder.path {
+      level += 1
+      current.deleteLastPathComponent()
     }
-    return count
-  }
-
-  func findParent(of node: FileNode, in nodes: [FileNode]) -> FileNode? {
-    for n in nodes {
-      if n.children.contains(where: { $0.id == node.id }) { return n }
-      if let found = findParent(of: node, in: n.children) { return found }
-    }
-    return nil
+    return level
   }
 
   func loadFiles() {
-    rootFiles = buildNodes(at: projectFolder)
+    rootFiles = buildFileTree(for: projectFolder)
+    targetFile = findTargetFile(in: rootFiles)
   }
 
-  func buildNodes(at url: URL) -> [FileNode] {
+  private func buildFileTree(for folder: URL) -> [FileNode] {
     let fm = FileManager.default
-    guard let contents = try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) else { return [] }
-    return contents.map { file in
-      let node = FileNode(file: file)
-      if node.isFolder {
-        node.children = buildNodes(at: file)
+    guard let contents = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else { return [] }
+
+    return contents.map { url in
+      let node = FileNode(file: url)
+      if url.hasDirectoryPath {
+        node.children = buildFileTree(for: url)
       }
       return node
     }
   }
 
+  private func findTargetFile(in nodes: [FileNode]) -> URL? {
+    let swiftFiles = nodes.flatMap { flatten(node: $0) }.filter { !$0.isFolder && $0.file.pathExtension == "swift" }
+    return swiftFiles.max(by: { (f1, f2) in
+      let date1 = (try? f1.file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+      let date2 = (try? f2.file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+      return date1 < date2
+    })?.file
+  }
+
+  private func flatten(node: FileNode) -> [FileNode] {
+    [node] + (node.children?.flatMap { flatten(node: $0) } ?? [])
+  }
+
   func deleteNode(_ node: FileNode) {
     try? FileManager.default.removeItem(at: node.file)
-    if let parent = findParent(of: node, in: rootFiles) {
-      parent.children.removeAll { $0.id == node.id }
-    } else {
-      rootFiles.removeAll { $0.id == node.id }
-    }
+    loadFiles()
   }
 
   func renameNode(_ node: FileNode) {
     let alert = UIAlertController(title: "Umbenennen", message: "Neuer Name", preferredStyle: .alert)
-    alert.addTextField { textField in
-      textField.text = node.file.lastPathComponent
-    }
+    alert.addTextField { $0.text = node.file.lastPathComponent }
     alert.addAction(UIAlertAction(title: "Abbrechen", style: .cancel))
     alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
       guard let newName = alert.textFields?.first?.text, !newName.isEmpty else { return }
       let newURL = node.file.deletingLastPathComponent().appendingPathComponent(newName)
       try? FileManager.default.moveItem(at: node.file, to: newURL)
       node.file = newURL
+      loadFiles()
     })
-    UIApplication.shared.windows.first?.rootViewController?.present(alert, animated: true)
-  }
-
-  struct FileDropDelegate: DropDelegate {
-    let target: FileNode
-    @Binding var rootNodes: [FileNode]
-
-    func performDrop(info: DropInfo) -> Bool {
-      guard target.isFolder else { return false }
-      for item in info.itemProviders(for: [.fileURL]) {
-        item.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
-          if let urlData = data as? Data, let sourceURL = URL(dataRepresentation: urlData, relativeTo: nil) {
-            let destURL = target.file.appendingPathComponent(sourceURL.lastPathComponent)
-            try? FileManager.default.moveItem(at: sourceURL, to: destURL)
-            DispatchQueue.main.async {
-              target.children.append(FileNode(file: destURL))
-            }
-          }
-        }
-      }
-      return true
+    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+       let rootVC = windowScene.windows.first?.rootViewController {
+      rootVC.present(alert, animated: true)
     }
+  }
+}
+
+// MARK: - Drag & Drop Delegate
+struct FileDropDelegate: DropDelegate {
+  let targetNode: FileListView.FileNode
+
+  func performDrop(info: DropInfo) -> Bool {
+    guard let item = info.itemProviders(for: [.fileURL]).first else { return false }
+    item.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
+      guard let data = data as? Data,
+            let url = NSURL(absoluteURLWithDataRepresentation: data, relativeTo: nil) as URL? else { return }
+      let destURL = targetNode.isFolder ? targetNode.file.appendingPathComponent(url.lastPathComponent) : targetNode.file.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent)
+      try? FileManager.default.moveItem(at: url, to: destURL)
+    }
+    return true
   }
 }
 

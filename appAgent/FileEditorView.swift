@@ -67,93 +67,112 @@ struct FileEditorView: View {
   }
 }
 
-// MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern (ohne WordWrap)
+// MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern (ohne Wrapping)
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
-  
+
   func makeUIView(context: Context) -> UIView {
     let container = UIView()
-    
+
     let lineNumbersView = UITextView()
     lineNumbersView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     lineNumbersView.backgroundColor = UIColor.secondarySystemBackground
     lineNumbersView.isEditable = false
-    lineNumbersView.isScrollEnabled = true
+    lineNumbersView.isScrollEnabled = false
     lineNumbersView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
     lineNumbersView.textContainer.lineBreakMode = .byClipping
-    lineNumbersView.textContainer.widthTracksTextView = false
-    
+
     let codeView = UITextView()
     codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     codeView.backgroundColor = .clear
     codeView.delegate = context.coordinator
     codeView.isScrollEnabled = true
     codeView.alwaysBounceHorizontal = true
+    codeView.alwaysBounceVertical = true
     codeView.autocorrectionType = .no
     codeView.autocapitalizationType = .none
-    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 50, bottom: 8, right: 8)
+
+    // 🔴 Wrapping vollständig deaktivieren
     codeView.textContainer.lineBreakMode = .byClipping
     codeView.textContainer.widthTracksTextView = false
-    
+    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 50, bottom: 8, right: 8)
+
     container.addSubview(lineNumbersView)
     container.addSubview(codeView)
-    
+
     lineNumbersView.translatesAutoresizingMaskIntoConstraints = false
     codeView.translatesAutoresizingMaskIntoConstraints = false
-    
+
     NSLayoutConstraint.activate([
       lineNumbersView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
       lineNumbersView.topAnchor.constraint(equalTo: container.topAnchor),
       lineNumbersView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-      
+
       codeView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
       codeView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
       codeView.topAnchor.constraint(equalTo: container.topAnchor),
       codeView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
     ])
-    
+
     context.coordinator.codeView = codeView
     context.coordinator.lineNumbersView = lineNumbersView
-    
+
     codeView.text = text
-    context.coordinator.updateLineNumbers()
-    context.coordinator.applyHighlighting()
-    
+    context.coordinator.updateAll()
+
     codeView.addObserver(context.coordinator, forKeyPath: "contentOffset", options: .new, context: nil)
-    
+
     return container
   }
-  
+
   func updateUIView(_ uiView: UIView, context: Context) {
     guard let codeView = context.coordinator.codeView else { return }
-    
+
     if codeView.text != text {
       codeView.text = text
-      context.coordinator.updateLineNumbers()
-      context.coordinator.applyHighlighting()
+      context.coordinator.updateAll()
     }
   }
-  
+
   func makeCoordinator() -> Coordinator {
     Coordinator(parent: self)
   }
-  
+
   class Coordinator: NSObject, UITextViewDelegate {
     var parent: SyntaxTextViewWithLineNumbersSync
     weak var codeView: UITextView?
     weak var lineNumbersView: UITextView?
-    
+
     init(parent: SyntaxTextViewWithLineNumbersSync) {
       self.parent = parent
     }
-    
+
     func textViewDidChange(_ textView: UITextView) {
       parent.text = textView.text
+      updateAll()
+    }
+
+    func updateAll() {
       updateLineNumbers()
       applyHighlighting()
+      adjustContentWidth()
     }
-    
+
+    // 🔴 sorgt dafür, dass KEIN Wrapping mehr möglich ist
+    func adjustContentWidth() {
+      guard let codeView = codeView else { return }
+
+      let contentWidth = codeView.contentSize.width
+      let minWidth = codeView.bounds.width
+
+      if contentWidth > minWidth {
+        codeView.textContainer.size = CGSize(width: contentWidth, height: .greatestFiniteMagnitude)
+      } else {
+        codeView.textContainer.size = CGSize(width: minWidth, height: .greatestFiniteMagnitude)
+      }
+    }
+
     func updateLineNumbers() {
       guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
 
@@ -173,20 +192,20 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
       lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
       codeView.textContainerInset.left = width + 4
     }
-    
+
     func applyHighlighting() {
       guard let codeView = codeView else { return }
-      
+
       let selected = codeView.selectedRange
       let textStorage = codeView.textStorage
       let fullRange = NSRange(location: 0, length: textStorage.length)
-      
+
       textStorage.beginEditing()
       textStorage.setAttributes([
         .foregroundColor: UIColor.label,
         .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
       ], range: fullRange)
-      
+
       for keyword in parent.keywords {
         let pattern = "\\b\(keyword)\\b"
         if let regex = try? NSRegularExpression(pattern: pattern) {
@@ -199,19 +218,19 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
           }
         }
       }
-      
+
       textStorage.endEditing()
       codeView.selectedRange = selected
     }
-    
+
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
       if keyPath == "contentOffset" {
         if let codeView = codeView, let lineNumbersView = lineNumbersView {
-          lineNumbersView.contentOffset = codeView.contentOffset
+          lineNumbersView.contentOffset.y = codeView.contentOffset.y
         }
       }
     }
-    
+
     deinit {
       codeView?.removeObserver(self, forKeyPath: "contentOffset")
     }

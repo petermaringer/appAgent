@@ -5,144 +5,177 @@ struct FileListView: View {
   @State private var rootFiles: [FileNode] = []
   @State private var selectedFile: FileNode?
   @State private var targetFile: URL?
+  
   @State private var showingEditor: Bool = false
-
+  @State private var renamingNode: FileNode?
+  @State private var newName: String = ""
+  
   class FileNode: Identifiable, ObservableObject {
-    var file: URL
+    let id = UUID()
+    @Published var file: URL
     @Published var children: [FileNode]? = nil
     @Published var isExpanded: Bool = false
-    @Published var isFolder: Bool = false
-
-    var id: String { file.absoluteString }
-
+    
     init(file: URL) {
       self.file = file
-      self.isFolder = file.hasDirectoryPath
+      reloadChildren()
+    }
+    
+    func reloadChildren() {
+      guard file.hasDirectoryPath else { children = nil; return }
+      let fm = FileManager.default
+      if let sub = try? fm.contentsOfDirectory(at: file, includingPropertiesForKeys: nil) {
+        children = sub.map { FileNode(file: $0) }
+          .sorted { $0.file.lastPathComponent.lowercased() < $1.file.lastPathComponent.lowercased() }
+      } else {
+        children = []
+      }
     }
   }
-
+  
   var body: some View {
     VStack(alignment: .leading) {
       Text("Projekt-Dateien")
         .font(.headline)
         .padding(.bottom, 5)
-
+      
       List {
         OutlineGroup(rootFiles, children: \.children) { node in
           HStack {
-            Image(systemName: node.isFolder ? (node.isExpanded ? "folder.open" : "folder") : "doc.text")
-              .foregroundColor(node.isFolder ? .blue : .primary)
-            Text(node.file.lastPathComponent)
-              .foregroundColor(node.file == targetFile ? .yellow : (node.isFolder ? .blue : .primary))
-              .fontWeight(node.file == targetFile ? .bold : .regular)
+            if node.file.hasDirectoryPath {
+              Image(systemName: node.isExpanded ? "folder.open.fill" : "folder.fill")
+                .foregroundColor(.blue)
+            }
+            
+            if renamingNode?.id == node.id {
+              TextField("", text: $newName, onCommit: { renameNode(node) })
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 200)
+            } else {
+              Text(node.file.lastPathComponent)
+                .foregroundColor(node.file == targetFile ? .yellow : (node.file.hasDirectoryPath ? .blue : .primary))
+            }
+            
             Spacer()
+            
             if node.file == targetFile {
               Image(systemName: "star.fill")
                 .foregroundColor(.yellow)
             }
           }
-          .padding(.leading, CGFloat(level(of: node)) * 16)
           .contentShape(Rectangle())
+          .padding(.leading, indentation(for: node))
           .onTapGesture {
-            if node.isFolder {
-              withAnimation { node.isExpanded.toggle() }
-            } else {
-              selectedFile = node
-            }
-          }
-          .swipeActions {
-            if !node.isFolder {
-              Button(role: .destructive) { deleteNode(node) } label: { Label("Löschen", systemImage: "trash") }
+            selectedFile = node
+            if node.file.hasDirectoryPath {
+              node.isExpanded.toggle()
+              node.reloadChildren()
             }
           }
           .onDrag {
-            node.file as NSURL
+            NSItemProvider(object: node.file as NSURL)
           }
-          .onDrop(of: [.fileURL], delegate: FileDropDelegate(targetNode: node))
+          .onDrop(of: ["public.file-url"], delegate: FileNodeDropDelegate(destination: node))
+          .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if !node.file.hasDirectoryPath {
+              Button("Löschen", role: .destructive) { deleteNode(node) }
+              Button("Umbenennen") {
+                renamingNode = node
+                newName = node.file.lastPathComponent
+              }
+            }
+          }
         }
       }
     }
     .onAppear(perform: loadFiles)
     .sheet(item: $selectedFile) { item in
-      FileEditorView(fileURL: item.file)
-    }
-  }
-
-  func level(of node: FileNode) -> Int {
-    var level = 0
-    var current = node.file.deletingLastPathComponent()
-    while current.path.hasPrefix(projectFolder.path) && current.path != projectFolder.path {
-      level += 1
-      current.deleteLastPathComponent()
-    }
-    return level
-  }
-
-  func loadFiles() {
-    rootFiles = buildFileTree(for: projectFolder)
-    targetFile = findTargetFile(in: rootFiles)
-  }
-
-  private func buildFileTree(for folder: URL) -> [FileNode] {
-    let fm = FileManager.default
-    guard let contents = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else { return [] }
-
-    return contents.map { url in
-      let node = FileNode(file: url)
-      if url.hasDirectoryPath {
-        node.children = buildFileTree(for: url)
+      if !item.file.hasDirectoryPath {
+        FileEditorView(fileURL: item.file)
       }
-      return node
     }
   }
-
-  private func findTargetFile(in nodes: [FileNode]) -> URL? {
-    let swiftFiles = nodes.flatMap { flatten(node: $0) }.filter { !$0.isFolder && $0.file.pathExtension == "swift" }
-    return swiftFiles.max(by: { (f1, f2) in
-      let date1 = (try? f1.file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-      let date2 = (try? f2.file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
-      return date1 < date2
-    })?.file
+  
+  func indentation(for node: FileNode) -> CGFloat {
+    var depth = 0
+    var parent = findParent(of: node, in: rootFiles)
+    while parent != nil {
+      depth += 1
+      parent = findParent(of: parent!, in: rootFiles)
+    }
+    return CGFloat(depth * 20)
   }
-
-  private func flatten(node: FileNode) -> [FileNode] {
-    [node] + (node.children?.flatMap { flatten(node: $0) } ?? [])
+  
+  func findParent(of child: FileNode, in nodes: [FileNode]) -> FileNode? {
+    for node in nodes {
+      if node.children?.contains(where: { $0.id == child.id }) ?? false {
+        return node
+      }
+      if let sub = node.children, let found = findParent(of: child, in: sub) {
+        return found
+      }
+    }
+    return nil
   }
-
-  func deleteNode(_ node: FileNode) {
-    try? FileManager.default.removeItem(at: node.file)
-    loadFiles()
+  
+  func loadFiles() {
+    rootFiles = [FileNode(file: projectFolder)]
   }
-
+  
   func renameNode(_ node: FileNode) {
-    let alert = UIAlertController(title: "Umbenennen", message: "Neuer Name", preferredStyle: .alert)
-    alert.addTextField { $0.text = node.file.lastPathComponent }
-    alert.addAction(UIAlertAction(title: "Abbrechen", style: .cancel))
-    alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
-      guard let newName = alert.textFields?.first?.text, !newName.isEmpty else { return }
-      let newURL = node.file.deletingLastPathComponent().appendingPathComponent(newName)
-      try? FileManager.default.moveItem(at: node.file, to: newURL)
+    guard !newName.isEmpty else { return }
+    let newURL = node.file.deletingLastPathComponent().appendingPathComponent(newName)
+    do {
+      try FileManager.default.moveItem(at: node.file, to: newURL)
       node.file = newURL
-      loadFiles()
-    })
-    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-       let rootVC = windowScene.windows.first?.rootViewController {
-      rootVC.present(alert, animated: true)
+      node.reloadChildren()
+    } catch {
+      print("Fehler beim Umbenennen: \(error)")
+    }
+    renamingNode = nil
+  }
+  
+  func deleteNode(_ node: FileNode) {
+    do {
+      try FileManager.default.removeItem(at: node.file)
+      removeNode(node, from: &rootFiles)
+    } catch {
+      print("Fehler beim Löschen: \(error)")
+    }
+  }
+  
+  func removeNode(_ node: FileNode, from array: inout [FileNode]) {
+    if let index = array.firstIndex(where: { $0.id == node.id }) {
+      array.remove(at: index)
+      return
+    }
+    for i in 0..<array.count {
+      if var children = array[i].children {
+        removeNode(node, from: &children)
+        array[i].children = children
+      }
     }
   }
 }
 
-// MARK: - Drag & Drop Delegate
-struct FileDropDelegate: DropDelegate {
-  let targetNode: FileListView.FileNode
-
+// MARK: - Drop Delegate für stabilen Ordner-Drag
+struct FileNodeDropDelegate: DropDelegate {
+  let destination: FileListView.FileNode
+  
   func performDrop(info: DropInfo) -> Bool {
-    guard let item = info.itemProviders(for: [.fileURL]).first else { return false }
-    item.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, _ in
+    guard let item = info.itemProviders(for: ["public.file-url"]).first else { return false }
+    item.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, error in
       guard let data = data as? Data,
             let url = NSURL(absoluteURLWithDataRepresentation: data, relativeTo: nil) as URL? else { return }
-      let destURL = targetNode.isFolder ? targetNode.file.appendingPathComponent(url.lastPathComponent) : targetNode.file.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent)
-      try? FileManager.default.moveItem(at: url, to: destURL)
+      let destURL = destination.file.appendingPathComponent(url.lastPathComponent)
+      do {
+        try FileManager.default.moveItem(at: url, to: destURL)
+        DispatchQueue.main.async {
+          destination.reloadChildren()
+        }
+      } catch {
+        print("Fehler beim Verschieben: \(error)")
+      }
     }
     return true
   }

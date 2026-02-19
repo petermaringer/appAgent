@@ -14,7 +14,8 @@ struct FileEditorView: View {
         .font(.headline)
         .padding()
 
-      TK2EditorView(text: $codeText, keywords: keywords)
+      //TK2EditorView(text: $codeText, keywords: keywords)
+      TK2EditorView(codeText: $codeText, keywords: keywords)
       //CodeEditorContainerView(codeText: $codeText, keywords: keywords)
         .frame(minHeight: 300)
         .cornerRadius(8)

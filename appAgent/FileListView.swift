@@ -2,6 +2,163 @@ import SwiftUI
 
 struct FileListView: View {
   let projectFolder: URL
+  @State private var files: [IdentifiableFile] = []
+  @State private var selectedFile: IdentifiableFile?
+  @State private var targetFile: URL?
+
+  @State private var showingEditor: Bool = false
+  @State private var showingRenameAlert: Bool = false
+  @State private var renameText: String = ""
+  @State private var fileToRename: IdentifiableFile?
+
+  struct IdentifiableFile: Identifiable, Equatable {
+    let file: URL
+    var level: Int = 0
+    var id: String { file.absoluteString }
+    var isFolder: Bool { file.hasDirectoryPath }
+    var isExpanded: Bool = false
+  }
+
+  var body: some View {
+    VStack(alignment: .leading) {
+      Text("Projekt-Dateien")
+        .font(.headline)
+        .padding(.bottom, 5)
+
+      List {
+        ForEach(files) { item in
+          FileRow(item: item)
+            .padding(.leading, CGFloat(item.level * 16))
+            .contentShape(Rectangle())
+            .onTapGesture {
+              if item.isFolder {
+                toggleFolder(item)
+              } else {
+                selectedFile = item
+              }
+            }
+            .swipeActions(edge: .trailing) {
+              Button("Löschen", role: .destructive) { delete(item) }
+              Button("Umbenennen") {
+                fileToRename = item
+                renameText = item.file.lastPathComponent
+                showingRenameAlert = true
+              }
+            }
+            .onDrag { NSItemProvider(object: item.file as NSURL) }
+            .onDrop(of: [.fileURL], delegate: FileDropDelegate(item: item, files: $files))
+        }
+      }
+    }
+    .onAppear(perform: loadFiles)
+    .sheet(item: $selectedFile) { item in
+      FileEditorView(fileURL: item.file)
+    }
+    .alert("Umbenennen", isPresented: $showingRenameAlert, actions: {
+      TextField("Neuer Name", text: $renameText)
+      Button("OK") { if let file = fileToRename?.file { rename(file: file, to: renameText) } }
+      Button("Abbrechen", role: .cancel) {}
+    }, message: { Text("Gib einen neuen Namen ein") })
+  }
+
+  @ViewBuilder
+  func FileRow(item: IdentifiableFile) -> some View {
+    HStack {
+      if item.isFolder {
+        Image(systemName: item.isExpanded ? "folder.fill" : "folder")
+          .foregroundColor(.blue)
+      } else {
+        Image(systemName: "doc.text")
+          .foregroundColor(.gray)
+      }
+
+      Text(item.file.lastPathComponent)
+        .foregroundColor(item.file == targetFile ? .yellow : (item.isFolder ? .blue : .primary))
+        .fontWeight(item.file == targetFile ? .bold : .regular)
+
+      Spacer()
+
+      if item.file == targetFile {
+        Image(systemName: "star.fill")
+          .foregroundColor(.yellow)
+      }
+    }
+  }
+
+  // MARK: - File Operations
+  func loadFiles() {
+    files = flattenFiles(at: projectFolder, level: 0)
+    if let lastModified = files.filter({ !$0.isFolder }).max(by: { f1, f2 in
+      let date1 = (try? f1.file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+      let date2 = (try? f2.file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+      return date1 < date2
+    }) {
+      targetFile = lastModified.file
+    }
+  }
+
+  func flattenFiles(at url: URL, level: Int) -> [IdentifiableFile] {
+    let fm = FileManager.default
+    guard let folderContents = try? fm.contentsOfDirectory(at: url, includingPropertiesForKeys: nil) else { return [] }
+
+    var list: [IdentifiableFile] = []
+    for file in folderContents.sorted(by: { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }) {
+      var item = IdentifiableFile(file: file, level: level, isExpanded: false)
+      list.append(item)
+      if file.hasDirectoryPath && item.isExpanded {
+        list.append(contentsOf: flattenFiles(at: file, level: level + 1))
+      }
+    }
+    return list
+  }
+
+  func toggleFolder(_ item: IdentifiableFile) {
+    guard let index = files.firstIndex(where: { $0.id == item.id }) else { return }
+    files[index].isExpanded.toggle()
+    files = flattenFiles(at: projectFolder, level: 0)
+  }
+
+  func delete(_ item: IdentifiableFile) {
+    try? FileManager.default.removeItem(at: item.file)
+    loadFiles()
+  }
+
+  func rename(file: URL, to newName: String) {
+    let newURL = file.deletingLastPathComponent().appendingPathComponent(newName)
+    try? FileManager.default.moveItem(at: file, to: newURL)
+    loadFiles()
+  }
+}
+
+// MARK: - Drag & Drop Delegate
+struct FileDropDelegate: DropDelegate {
+  let item: FileListView.IdentifiableFile
+  @Binding var files: [FileListView.IdentifiableFile]
+
+  func performDrop(info: DropInfo) -> Bool {
+    guard let itemProvider = info.itemProviders(for: [.fileURL]).first else { return false }
+    itemProvider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { data, error in
+      guard let data = data as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+      moveFile(url: url, to: item.file)
+    }
+    return true
+  }
+
+  private func moveFile(url: URL, to destination: URL) {
+    let fm = FileManager.default
+    let targetURL = destination.hasDirectoryPath ? destination.appendingPathComponent(url.lastPathComponent) : destination.deletingLastPathComponent().appendingPathComponent(url.lastPathComponent)
+    try? fm.moveItem(at: url, to: targetURL)
+    DispatchQueue.main.async {
+      // force refresh
+      files = files
+    }
+  }
+}
+
+/*import SwiftUI
+
+struct FileListView: View {
+  let projectFolder: URL
   @State private var items: [IdentifiableItem] = []
   @State private var selectedItem: IdentifiableItem?
   @State private var targetFile: URL?
@@ -24,7 +181,7 @@ struct FileListView: View {
         ForEach(displayedItems(items)) { item in
           HStack {
             if item.isDirectory {
-              Image(systemName: expandedFolders.contains(item.url) ? "folder.open" : "folder")
+              Image(systemName: expandedFolders.contains(item.url) ? "folder.fill" : "folder")
                 .foregroundColor(.blue)
             } else {
               Image(systemName: "doc.text")
@@ -121,7 +278,7 @@ struct FileListView: View {
       expandedFolders.insert(url)
     }
   }
-}
+}*/
 
 /*import SwiftUI
 

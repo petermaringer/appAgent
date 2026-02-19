@@ -14,6 +14,165 @@ struct FileEditorView: View {
         .font(.headline)
         .padding()
 
+      CodeEditorView(codeText: $codeText, keywords: keywords)
+        .frame(minHeight: 300)
+        .cornerRadius(8)
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))
+        .padding()
+
+      HStack {
+        Button {
+          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        } label: {
+          Image(systemName: "keyboard.chevron.compact.down")
+        }
+        .opacity(isKeyboardVisible ? 1 : 0)
+        .disabled(!isKeyboardVisible)
+
+        Spacer()
+
+        Button("Speichern & schließen") {
+          UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+          saveFile()
+          dismiss()
+        }
+      }
+      .padding(.horizontal)
+    }
+    .padding()
+    .onAppear {
+      loadFile()
+
+      NotificationCenter.default.addObserver(
+        forName: UIResponder.keyboardWillShowNotification,
+        object: nil,
+        queue: .main
+      ) { _ in
+        withAnimation(.easeInOut(duration: 0.25)) {
+          isKeyboardVisible = true
+        }
+      }
+
+      NotificationCenter.default.addObserver(
+        forName: UIResponder.keyboardWillHideNotification,
+        object: nil,
+        queue: .main
+      ) { _ in
+        isKeyboardVisible = false
+      }
+    }
+    .onDisappear {
+      NotificationCenter.default.removeObserver(self)
+    }
+  }
+
+  func loadFile() {
+    if let text = try? String(contentsOf: fileURL) {
+      codeText = text
+    }
+  }
+
+  func saveFile() {
+    try? codeText.write(to: fileURL, atomically: true, encoding: .utf8)
+  }
+}
+
+struct CodeEditorView: UIViewRepresentable {
+  @Binding var codeText: String
+  let keywords: [String]
+
+  func makeUIView(context: Context) -> UITextView {
+    let textView = UITextView(frame: .zero)
+    textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    textView.isScrollEnabled = true
+    textView.autocorrectionType = .no
+    textView.autocapitalizationType = .none
+    textView.backgroundColor = .systemBackground
+    textView.delegate = context.coordinator
+    textView.text = codeText
+    textView.textContainer.lineFragmentPadding = 4
+    textView.alwaysBounceVertical = true
+
+    context.coordinator.textView = textView
+    context.coordinator.applyHighlighting(keywords: keywords)
+
+    return textView
+  }
+
+  func updateUIView(_ uiView: UITextView, context: Context) {
+    if uiView.text != codeText {
+      uiView.text = codeText
+      context.coordinator.applyHighlighting(keywords: keywords)
+    }
+  }
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator(self)
+  }
+
+  class Coordinator: NSObject, UITextViewDelegate {
+    var parent: CodeEditorView
+    weak var textView: UITextView?
+
+    init(_ parent: CodeEditorView) {
+      self.parent = parent
+    }
+
+    func textViewDidChange(_ textView: UITextView) {
+      parent.codeText = textView.text
+      applyHighlighting(keywords: parent.keywords)
+    }
+
+    func applyHighlighting(keywords: [String]) {
+      guard let textView = textView else { return }
+
+      let selected = textView.selectedRange
+      let storage = textView.textStorage
+      let fullRange = NSRange(location: 0, length: storage.length)
+
+      storage.beginEditing()
+
+      storage.removeAttribute(.foregroundColor, range: fullRange)
+      storage.removeAttribute(.font, range: fullRange)
+
+      storage.addAttributes([
+        .foregroundColor: UIColor.label,
+        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+      ], range: fullRange)
+
+      for kw in keywords {
+        if let regex = try? NSRegularExpression(pattern: "\\b\(kw)\\b") {
+          for match in regex.matches(in: textView.text, range: fullRange) {
+            storage.addAttributes([
+              .foregroundColor: UIColor.systemBlue,
+              .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
+            ], range: match.range)
+          }
+        }
+      }
+
+      storage.endEditing()
+      textView.selectedRange = selected
+    }
+  }
+}
+
+/*import SwiftUI
+
+struct FileEditorView: View {
+  let fileURL: URL
+  @Environment(\.dismiss) var dismiss
+  @State private var codeText: String = ""
+  @State private var isKeyboardVisible: Bool = false
+
+  private let keywords = ["let","var","func","struct","class","import","if","else","for","while","return","in","enum","extension","switch","case","default","break","guard","do","try","catch"]
+
+  var body: some View {
+    VStack {
+      Text("Bearbeite: \(fileURL.lastPathComponent)")
+        .font(.headline)
+        .padding()
+
       //TK2EditorView(text: $codeText, keywords: keywords)
       TK2EditorView(codeText: $codeText, keywords: keywords)
       //CodeEditorContainerView(codeText: $codeText, keywords: keywords)
@@ -146,7 +305,7 @@ struct TK2EditorView: UIViewRepresentable {
       textView.selectedRange = selected
     }
   }
-}
+}*/
 
 /*//import SwiftUI
 import UIKit

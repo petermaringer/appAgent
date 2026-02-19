@@ -112,10 +112,13 @@ struct TK2EditorView: UIViewRepresentable {
 
     init(_ parent: TK2EditorView) { self.parent = parent }
 
-    func textViewDidChange(_ textView: UITextView) {
-      parent.codeText = textView.text
-      applyHighlighting(keywords: parent.keywords)
-    }
+   func textViewDidChange(_ textView: UITextView) {
+  parent.codeText = textView.text
+
+  DispatchQueue.main.async { [weak self] in
+    self?.applyHighlighting(keywords: self?.parent.keywords ?? [])
+  }
+}
 
     func applyHighlighting(keywords: [String]) {
       guard let textView = textView, !keywords.isEmpty else { return }

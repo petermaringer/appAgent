@@ -73,15 +73,7 @@ struct TK2EditorView: UIViewRepresentable {
   let keywords: [String]
 
   func makeUIView(context: Context) -> UITextView {
-    let textStorage = NSTextStorage(string: codeText)
-    let layoutManager = NSLayoutManager()
-    textStorage.addLayoutManager(layoutManager)
-
-    let textContainer = NSTextContainer(size: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
-    textContainer.lineFragmentPadding = 4
-    layoutManager.addTextContainer(textContainer)
-
-    let textView = UITextView(frame: .zero, textContainer: textContainer)
+    let textView = UITextView(frame: .zero)
     textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
     textView.isScrollEnabled = true
     textView.autocorrectionType = .no
@@ -89,6 +81,7 @@ struct TK2EditorView: UIViewRepresentable {
     textView.backgroundColor = .systemBackground
     textView.delegate = context.coordinator
     textView.text = codeText
+    textView.textContainer.lineFragmentPadding = 4
     textView.alwaysBounceVertical = true
 
     context.coordinator.textView = textView
@@ -104,42 +97,51 @@ struct TK2EditorView: UIViewRepresentable {
     }
   }
 
-  func makeCoordinator() -> Coordinator { Coordinator(self) }
+  func makeCoordinator() -> Coordinator {
+    Coordinator(self)
+  }
 
   class Coordinator: NSObject, UITextViewDelegate {
     var parent: TK2EditorView
     weak var textView: UITextView?
 
-    init(_ parent: TK2EditorView) { self.parent = parent }
+    init(_ parent: TK2EditorView) {
+      self.parent = parent
+    }
 
-   func textViewDidChange(_ textView: UITextView) {
-  parent.codeText = textView.text
-
-  DispatchQueue.main.async { [weak self] in
-    self?.applyHighlighting(keywords: self?.parent.keywords ?? [])
-  }
-}
+    func textViewDidChange(_ textView: UITextView) {
+      parent.codeText = textView.text
+      applyHighlighting(keywords: parent.keywords)
+    }
 
     func applyHighlighting(keywords: [String]) {
-      guard let textView = textView, !keywords.isEmpty else { return }
+      guard let textView = textView else { return }
+
       let selected = textView.selectedRange
       let storage = textView.textStorage
       let fullRange = NSRange(location: 0, length: storage.length)
 
       storage.beginEditing()
-      storage.setAttributes([.foregroundColor: UIColor.label,
-                             .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)],
-                            range: fullRange)
+
+      storage.removeAttribute(.foregroundColor, range: fullRange)
+      storage.removeAttribute(.font, range: fullRange)
+
+      storage.addAttributes([
+        .foregroundColor: UIColor.label,
+        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+      ], range: fullRange)
 
       for kw in keywords {
         if let regex = try? NSRegularExpression(pattern: "\\b\(kw)\\b") {
           for match in regex.matches(in: textView.text, range: fullRange) {
-            storage.addAttributes([.foregroundColor: UIColor.systemBlue,
-                                   .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)],
-                                  range: match.range)
+            storage.addAttributes([
+              .foregroundColor: UIColor.systemBlue,
+              .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
+            ], range: match.range)
           }
         }
       }
+
       storage.endEditing()
       textView.selectedRange = selected
     }

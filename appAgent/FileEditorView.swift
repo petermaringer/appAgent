@@ -14,8 +14,8 @@ struct FileEditorView: View {
         .font(.headline)
         .padding()
 
-      //SyntaxTextViewWithLineNumbersSync(text: $codeText, keywords: keywords)
-      CodeEditorContainerView(codeText: $codeText, keywords: keywords)
+      SyntaxTextViewWithLineNumbersSync(text: $codeText, keywords: keywords)
+      //CodeEditorContainerView(codeText: $codeText, keywords: keywords)
         .frame(minHeight: 300)
         .cornerRadius(8)
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.gray, lineWidth: 1))

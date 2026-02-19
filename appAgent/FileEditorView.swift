@@ -67,150 +67,129 @@ struct FileEditorView: View {
   }
 }
 
-// MARK: - Stabiler Code Editor ohne Wrapping
+// MARK: - Editor mit Gutter-Spalte, Highlighting, ohne Wordwrap
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
 
-  func makeUIView(context: Context) -> UIScrollView {
-    let scrollView = UIScrollView()
-    scrollView.alwaysBounceVertical = true
-    scrollView.alwaysBounceHorizontal = true
-
-    let gutter = UITextView()
-    gutter.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    gutter.backgroundColor = UIColor.secondarySystemBackground
-    gutter.isEditable = false
-    gutter.isScrollEnabled = false
-    gutter.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
-    gutter.textContainer.lineBreakMode = .byClipping
-
-    let codeView = UITextView()
-    codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    codeView.delegate = context.coordinator
-    codeView.autocorrectionType = .no
-    codeView.autocapitalizationType = .none
-    codeView.isScrollEnabled = false
-    codeView.textContainer.lineBreakMode = .byClipping
-    codeView.backgroundColor = .clear
-    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
-
-    scrollView.addSubview(gutter)
-    scrollView.addSubview(codeView)
-
-    context.coordinator.codeView = codeView
-    context.coordinator.gutter = gutter
-    context.coordinator.scrollView = scrollView
-
-    codeView.text = text
+  func makeUIView(context: Context) -> EditorContainer {
+    let container = EditorContainer()
+    container.codeView.delegate = context.coordinator
+    container.codeView.text = text
+    context.coordinator.container = container
     context.coordinator.updateAll()
-
-    return scrollView
+    return container
   }
 
-  func updateUIView(_ uiView: UIScrollView, context: Context) {
-    guard let codeView = context.coordinator.codeView else { return }
-
-    if codeView.text != text {
-      codeView.text = text
+  func updateUIView(_ uiView: EditorContainer, context: Context) {
+    if uiView.codeView.text != text {
+      uiView.codeView.text = text
       context.coordinator.updateAll()
     }
   }
 
-  func makeCoordinator() -> Coordinator {
-    Coordinator(self)
-  }
+  func makeCoordinator() -> Coordinator { Coordinator(self) }
 
   class Coordinator: NSObject, UITextViewDelegate {
     var parent: SyntaxTextViewWithLineNumbersSync
-    weak var codeView: UITextView?
-    weak var gutter: UITextView?
-    weak var scrollView: UIScrollView?
+    weak var container: EditorContainer?
 
-    init(_ parent: SyntaxTextViewWithLineNumbersSync) {
-      self.parent = parent
-    }
+    init(_ parent: SyntaxTextViewWithLineNumbersSync) { self.parent = parent }
 
     func textViewDidChange(_ textView: UITextView) {
       parent.text = textView.text
       updateAll()
     }
 
-    func updateAll() {
-      updateLineNumbers()
-      applyHighlighting()
-      layout()
-    }
+    func updateAll() { container?.updateLayoutAndHighlight(parent.keywords) }
+  }
+}
 
-    func layout() {
-      guard let codeView = codeView,
-            let gutter = gutter,
-            let scrollView = scrollView else { return }
+// -----------------------------------
+// Container für Gutter + CodeView
+// -----------------------------------
+final class EditorContainer: UIScrollView {
 
-      codeView.layoutIfNeeded()
+  let gutter = UITextView()
+  let codeView = UITextView()
 
-      let contentWidth = codeView.contentSize.width
-      let contentHeight = codeView.contentSize.height
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    alwaysBounceVertical = true
+    alwaysBounceHorizontal = true
 
-      let lines = max(codeView.text.components(separatedBy: "\n").count, 1)
-      let digits = String(lines).count
-      let sample = String(repeating: "8", count: digits) as NSString
-      let gutterWidth = sample.size(withAttributes: [.font: gutter.font!]).width + 24
+    gutter.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    gutter.backgroundColor = UIColor.secondarySystemBackground
+    gutter.isEditable = false
+    gutter.isScrollEnabled = false
+    gutter.textContainer.lineBreakMode = .byClipping
+    gutter.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
 
-      gutter.frame = CGRect(x: 0, y: 0,
-                            width: gutterWidth,
-                            height: contentHeight)
+    codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    codeView.autocorrectionType = .no
+    codeView.autocapitalizationType = .none
+    codeView.isScrollEnabled = false
+    codeView.textContainer.lineBreakMode = .byClipping
+    codeView.textContainer.widthTracksTextView = false
+    codeView.backgroundColor = .clear
+    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
 
-      codeView.frame = CGRect(x: gutterWidth,
-                              y: 0,
-                              width: contentWidth,
-                              height: contentHeight)
+    addSubview(gutter)
+    addSubview(codeView)
+  }
 
-      scrollView.contentSize = CGSize(
-        width: gutterWidth + contentWidth,
-        height: contentHeight
-      )
-    }
+  required init?(coder: NSCoder) { fatalError() }
 
-    func updateLineNumbers() {
-      guard let codeView = codeView,
-            let gutter = gutter else { return }
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    updateLayoutAndHighlight([])
+  }
 
-      let lines = codeView.text.components(separatedBy: "\n")
-      gutter.text = (1...max(lines.count,1))
-        .map { "\($0)" }
-        .joined(separator: "\n")
-    }
+  func updateLayoutAndHighlight(_ keywords: [String]) {
+    codeView.sizeToFit()
 
-    func applyHighlighting() {
-      guard let codeView = codeView else { return }
+    let contentWidth = codeView.contentSize.width
+    let contentHeight = codeView.contentSize.height
 
-      let selected = codeView.selectedRange
-      let textStorage = codeView.textStorage
-      let fullRange = NSRange(location: 0, length: textStorage.length)
+    let lines = max(codeView.text.components(separatedBy: "\n").count, 1)
+    gutter.text = (1...lines).map { "\($0)" }.joined(separator: "\n")
 
-      textStorage.beginEditing()
-      textStorage.setAttributes([
-        .foregroundColor: UIColor.label,
-        .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-      ], range: fullRange)
+    let digits = String(lines).count
+    let sample = String(repeating: "8", count: digits) as NSString
+    let gutterWidth = sample.size(withAttributes: [.font: gutter.font!]).width + 24
 
-      for keyword in parent.keywords {
-        let pattern = "\\b\(keyword)\\b"
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-          let matches = regex.matches(in: codeView.text, range: fullRange)
-          for match in matches {
-            textStorage.addAttributes([
-              .foregroundColor: UIColor.systemBlue,
-              .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)
-            ], range: match.range)
-          }
+    gutter.frame = CGRect(x: 0, y: 0, width: gutterWidth, height: contentHeight)
+    codeView.frame = CGRect(x: gutterWidth, y: 0, width: contentWidth, height: contentHeight)
+    contentSize = CGSize(width: gutterWidth + contentWidth, height: contentHeight)
+
+    applyHighlighting(keywords: keywords)
+  }
+
+  private func applyHighlighting(keywords: [String]) {
+    guard !keywords.isEmpty else { return }
+    let selected = codeView.selectedRange
+    let textStorage = codeView.textStorage
+    let fullRange = NSRange(location: 0, length: textStorage.length)
+
+    textStorage.beginEditing()
+    textStorage.setAttributes([.foregroundColor: UIColor.label,
+                               .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)],
+                              range: fullRange)
+
+    for keyword in keywords {
+      let pattern = "\\b\(keyword)\\b"
+      if let regex = try? NSRegularExpression(pattern: pattern) {
+        let matches = regex.matches(in: codeView.text, range: fullRange)
+        for match in matches {
+          textStorage.addAttributes([.foregroundColor: UIColor.systemBlue,
+                                     .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)],
+                                    range: match.range)
         }
       }
-
-      textStorage.endEditing()
-      codeView.selectedRange = selected
     }
+
+    textStorage.endEditing()
+    codeView.selectedRange = selected
   }
 }
 

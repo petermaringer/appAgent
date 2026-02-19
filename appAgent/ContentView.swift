@@ -6,33 +6,36 @@ struct ContentView: View {
 
   var body: some View {
     NavigationStack {
-      ZStack {
-        Color(.systemBackground).ignoresSafeArea() // Hintergrund füllt ganzen Screen
-
-        VStack(spacing: 0) {
-          List {
-            ForEach(projects) { project in
-              NavigationLink(destination: ProjectDetailView(project: project)) {
-                Text(project.projectName)
-                  .font(.body)
-                  .frame(height: 44, alignment: .leading)
-              }
+      VStack(spacing: 0) {
+        List {
+          ForEach(projects) { project in
+            NavigationLink(destination: ProjectDetailView(project: project)) {
+              Text(project.projectName)
+                .font(.body)
+                .frame(height: 44, alignment: .leading)
             }
           }
-          .listStyle(.plain)
-          .frame(maxHeight: .infinity) // List füllt den verfügbaren Platz
-
-          Button("Neues Projekti") {
-            showingNewProjectSheet = true
+          .onDelete { indexSet in
+            for index in indexSet {
+              let project = projects[index]
+              try? FileManager.default.removeItem(at: project.projectFolder)
+            }
+            projects.remove(atOffsets: indexSet)
           }
-          .font(.body)
-          .frame(height: 44)
-          .frame(maxWidth: .infinity)
-          .padding(.horizontal)
-          .padding(.vertical, 6)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .listStyle(.plain)
+
+        Button("Neues Projekt") {
+          showingNewProjectSheet = true
+        }
+        .font(.body)
+        .frame(height: 44)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+        .background(Color(.systemGray6))
       }
+      .background(Color(.systemBackground).ignoresSafeArea())
       .navigationTitle("App-Generator")
     }
     .sheet(isPresented: $showingNewProjectSheet) {

@@ -67,66 +67,48 @@ struct FileEditorView: View {
   }
 }
 
-// MARK: - Editierbarer CodeView mit synchronisierten Zeilennummern (ohne Wrapping)
+// MARK: - Stabiler Code Editor ohne Wrapping
 struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   @Binding var text: String
   let keywords: [String]
 
-  func makeUIView(context: Context) -> UIView {
-    let container = UIView()
+  func makeUIView(context: Context) -> UIScrollView {
+    let scrollView = UIScrollView()
+    scrollView.alwaysBounceVertical = true
+    scrollView.alwaysBounceHorizontal = true
 
-    let lineNumbersView = UITextView()
-    lineNumbersView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    lineNumbersView.backgroundColor = UIColor.secondarySystemBackground
-    lineNumbersView.isEditable = false
-    lineNumbersView.isScrollEnabled = false
-    lineNumbersView.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
-    lineNumbersView.textContainer.lineBreakMode = .byClipping
+    let gutter = UITextView()
+    gutter.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    gutter.backgroundColor = UIColor.secondarySystemBackground
+    gutter.isEditable = false
+    gutter.isScrollEnabled = false
+    gutter.textContainerInset = UIEdgeInsets(top: 8, left: 4, bottom: 8, right: 4)
+    gutter.textContainer.lineBreakMode = .byClipping
 
     let codeView = UITextView()
     codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    codeView.backgroundColor = .clear
     codeView.delegate = context.coordinator
-    codeView.isScrollEnabled = true
-    codeView.alwaysBounceHorizontal = true
-    codeView.alwaysBounceVertical = true
     codeView.autocorrectionType = .no
     codeView.autocapitalizationType = .none
-
-    // 🔴 Wrapping vollständig deaktivieren
+    codeView.isScrollEnabled = false
     codeView.textContainer.lineBreakMode = .byClipping
-    codeView.textContainer.widthTracksTextView = false
-    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 50, bottom: 8, right: 8)
+    codeView.backgroundColor = .clear
+    codeView.textContainerInset = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
 
-    container.addSubview(lineNumbersView)
-    container.addSubview(codeView)
-
-    lineNumbersView.translatesAutoresizingMaskIntoConstraints = false
-    codeView.translatesAutoresizingMaskIntoConstraints = false
-
-    NSLayoutConstraint.activate([
-      lineNumbersView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-      lineNumbersView.topAnchor.constraint(equalTo: container.topAnchor),
-      lineNumbersView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-
-      codeView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-      codeView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-      codeView.topAnchor.constraint(equalTo: container.topAnchor),
-      codeView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
-    ])
+    scrollView.addSubview(gutter)
+    scrollView.addSubview(codeView)
 
     context.coordinator.codeView = codeView
-    context.coordinator.lineNumbersView = lineNumbersView
+    context.coordinator.gutter = gutter
+    context.coordinator.scrollView = scrollView
 
     codeView.text = text
     context.coordinator.updateAll()
 
-    codeView.addObserver(context.coordinator, forKeyPath: "contentOffset", options: .new, context: nil)
-
-    return container
+    return scrollView
   }
 
-  func updateUIView(_ uiView: UIView, context: Context) {
+  func updateUIView(_ uiView: UIScrollView, context: Context) {
     guard let codeView = context.coordinator.codeView else { return }
 
     if codeView.text != text {
@@ -136,15 +118,16 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
   }
 
   func makeCoordinator() -> Coordinator {
-    Coordinator(parent: self)
+    Coordinator(self)
   }
 
   class Coordinator: NSObject, UITextViewDelegate {
     var parent: SyntaxTextViewWithLineNumbersSync
     weak var codeView: UITextView?
-    weak var lineNumbersView: UITextView?
+    weak var gutter: UITextView?
+    weak var scrollView: UIScrollView?
 
-    init(parent: SyntaxTextViewWithLineNumbersSync) {
+    init(_ parent: SyntaxTextViewWithLineNumbersSync) {
       self.parent = parent
     }
 
@@ -156,41 +139,47 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
     func updateAll() {
       updateLineNumbers()
       applyHighlighting()
-      adjustContentWidth()
+      layout()
     }
 
-    // 🔴 sorgt dafür, dass KEIN Wrapping mehr möglich ist
-    func adjustContentWidth() {
-      guard let codeView = codeView else { return }
+    func layout() {
+      guard let codeView = codeView,
+            let gutter = gutter,
+            let scrollView = scrollView else { return }
+
+      codeView.layoutIfNeeded()
 
       let contentWidth = codeView.contentSize.width
-      let minWidth = codeView.bounds.width
+      let contentHeight = codeView.contentSize.height
 
-      if contentWidth > minWidth {
-        codeView.textContainer.size = CGSize(width: contentWidth, height: .greatestFiniteMagnitude)
-      } else {
-        codeView.textContainer.size = CGSize(width: minWidth, height: .greatestFiniteMagnitude)
-      }
+      let lines = max(codeView.text.components(separatedBy: "\n").count, 1)
+      let digits = String(lines).count
+      let sample = String(repeating: "8", count: digits) as NSString
+      let gutterWidth = sample.size(withAttributes: [.font: gutter.font!]).width + 24
+
+      gutter.frame = CGRect(x: 0, y: 0,
+                            width: gutterWidth,
+                            height: contentHeight)
+
+      codeView.frame = CGRect(x: gutterWidth,
+                              y: 0,
+                              width: contentWidth,
+                              height: contentHeight)
+
+      scrollView.contentSize = CGSize(
+        width: gutterWidth + contentWidth,
+        height: contentHeight
+      )
     }
 
     func updateLineNumbers() {
-      guard let codeView = codeView, let lineNumbersView = lineNumbersView else { return }
+      guard let codeView = codeView,
+            let gutter = gutter else { return }
 
       let lines = codeView.text.components(separatedBy: "\n")
-      let numbers = (1...max(lines.count,1)).map { "\($0)" }
-      lineNumbersView.text = numbers.joined(separator: "\n")
-
-      let maxLineNumber = max(lines.count, 1)
-      let digits = String(maxLineNumber).count
-      let sample = String(repeating: "8", count: digits) as NSString
-      let width = sample.size(withAttributes: [.font: lineNumbersView.font!]).width + 24
-
-      lineNumbersView.constraints
-        .filter { $0.firstAttribute == .width }
-        .forEach { $0.isActive = false }
-
-      lineNumbersView.widthAnchor.constraint(equalToConstant: width).isActive = true
-      codeView.textContainerInset.left = width + 4
+      gutter.text = (1...max(lines.count,1))
+        .map { "\($0)" }
+        .joined(separator: "\n")
     }
 
     func applyHighlighting() {
@@ -221,18 +210,6 @@ struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
 
       textStorage.endEditing()
       codeView.selectedRange = selected
-    }
-
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-      if keyPath == "contentOffset" {
-        if let codeView = codeView, let lineNumbersView = lineNumbersView {
-          lineNumbersView.contentOffset.y = codeView.contentOffset.y
-        }
-      }
-    }
-
-    deinit {
-      codeView?.removeObserver(self, forKeyPath: "contentOffset")
     }
   }
 }

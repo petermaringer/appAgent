@@ -68,7 +68,6 @@ struct FileEditorView: View {
   }
 }
 
-// MARK: - TextKit 2 Editor ohne Linewrap, mit Highlighting
 struct TK2EditorView: UIViewRepresentable {
   @Binding var codeText: String
   let keywords: [String]
@@ -90,9 +89,7 @@ struct TK2EditorView: UIViewRepresentable {
     textView.backgroundColor = .systemBackground
     textView.delegate = context.coordinator
     textView.text = codeText
-    textView.textContainer.lineBreakMode = .byClipping // Wordwrap aus
     textView.alwaysBounceVertical = true
-    textView.alwaysBounceHorizontal = true
 
     context.coordinator.textView = textView
     context.coordinator.applyHighlighting(keywords: keywords)

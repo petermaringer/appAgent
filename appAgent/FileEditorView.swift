@@ -14,7 +14,7 @@ struct FileEditorView: View {
         .font(.headline)
         .padding()
 
-      SyntaxTextViewSimpleEditor(text: $codeText, keywords: keywords)
+      TK2EditorView(text: $codeText, keywords: keywords)
       //CodeEditorContainerView(codeText: $codeText, keywords: keywords)
         .frame(minHeight: 300)
         .cornerRadius(8)
@@ -67,42 +67,41 @@ struct FileEditorView: View {
   }
 }
 
-// MARK: - Editor mit fixem Gutter, kein Wordwrap, stabil bei Keyboard
-//struct SyntaxTextViewWithLineNumbersSync: UIViewRepresentable {
-// MARK: - Einfacher Editor ohne Zeilennummern, Wordwrap aus, Highlighting
-struct SyntaxTextViewSimpleEditor: UIViewRepresentable {
-  @Binding var text: String
+// MARK: - TextKit 2 Editor ohne Linewrap, mit Highlighting
+struct TK2EditorView: UIViewRepresentable {
+  @Binding var codeText: String
   let keywords: [String]
 
   func makeUIView(context: Context) -> UITextView {
-    let codeView = UITextView()
-    codeView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
-    codeView.autocorrectionType = .no
-    codeView.autocapitalizationType = .none
-    codeView.isScrollEnabled = true
-    codeView.textContainer.lineBreakMode = .byClipping // keine Wordwrap
-    codeView.textContainer.widthTracksTextView = false
-    codeView.backgroundColor = UIColor.systemBackground
-    codeView.delegate = context.coordinator
-    codeView.text = text
+    let textStorage = NSTextStorage(string: codeText)
+    let layoutManager = NSLayoutManager()
+    textStorage.addLayoutManager(layoutManager)
 
-    // Keyboard Handling
-    NotificationCenter.default.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak codeView] notification in
-      guard let codeView = codeView else { return }
-      if let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
-        let keyboardHeight = UIScreen.main.bounds.height - endFrame.origin.y
-        codeView.frame.size.height = UIScreen.main.bounds.height - keyboardHeight
-      }
-    }
+    let textContainer = NSTextContainer(size: CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude))
+    textContainer.lineFragmentPadding = 4
+    layoutManager.addTextContainer(textContainer)
 
-    context.coordinator.codeView = codeView
+    let textView = UITextView(frame: .zero, textContainer: textContainer)
+    textView.font = UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)
+    textView.isScrollEnabled = true
+    textView.autocorrectionType = .no
+    textView.autocapitalizationType = .none
+    textView.backgroundColor = .systemBackground
+    textView.delegate = context.coordinator
+    textView.text = codeText
+    textView.textContainer.lineBreakMode = .byClipping // Wordwrap aus
+    textView.alwaysBounceVertical = true
+    textView.alwaysBounceHorizontal = true
+
+    context.coordinator.textView = textView
     context.coordinator.applyHighlighting(keywords: keywords)
-    return codeView
+
+    return textView
   }
 
   func updateUIView(_ uiView: UITextView, context: Context) {
-    if uiView.text != text {
-      uiView.text = text
+    if uiView.text != codeText {
+      uiView.text = codeText
       context.coordinator.applyHighlighting(keywords: keywords)
     }
   }
@@ -110,41 +109,38 @@ struct SyntaxTextViewSimpleEditor: UIViewRepresentable {
   func makeCoordinator() -> Coordinator { Coordinator(self) }
 
   class Coordinator: NSObject, UITextViewDelegate {
-    var parent: SyntaxTextViewSimpleEditor
-    weak var codeView: UITextView?
+    var parent: TK2EditorView
+    weak var textView: UITextView?
 
-    init(_ parent: SyntaxTextViewSimpleEditor) { self.parent = parent }
+    init(_ parent: TK2EditorView) { self.parent = parent }
 
     func textViewDidChange(_ textView: UITextView) {
-      parent.text = textView.text
+      parent.codeText = textView.text
       applyHighlighting(keywords: parent.keywords)
     }
 
     func applyHighlighting(keywords: [String]) {
-      guard let codeView = codeView, !keywords.isEmpty else { return }
-      let selected = codeView.selectedRange
-      let textStorage = codeView.textStorage
-      let fullRange = NSRange(location: 0, length: textStorage.length)
+      guard let textView = textView, !keywords.isEmpty else { return }
+      let selected = textView.selectedRange
+      let storage = textView.textStorage
+      let fullRange = NSRange(location: 0, length: storage.length)
 
-      textStorage.beginEditing()
-      textStorage.setAttributes([.foregroundColor: UIColor.label,
-                                 .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)],
-                                range: fullRange)
+      storage.beginEditing()
+      storage.setAttributes([.foregroundColor: UIColor.label,
+                             .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .regular)],
+                            range: fullRange)
 
-      for keyword in keywords {
-        let pattern = "\\b\(keyword)\\b"
-        if let regex = try? NSRegularExpression(pattern: pattern) {
-          let matches = regex.matches(in: codeView.text, range: fullRange)
-          for match in matches {
-            textStorage.addAttributes([.foregroundColor: UIColor.systemBlue,
-                                       .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)],
-                                      range: match.range)
+      for kw in keywords {
+        if let regex = try? NSRegularExpression(pattern: "\\b\(kw)\\b") {
+          for match in regex.matches(in: textView.text, range: fullRange) {
+            storage.addAttributes([.foregroundColor: UIColor.systemBlue,
+                                   .font: UIFont.monospacedSystemFont(ofSize: 14, weight: .bold)],
+                                  range: match.range)
           }
         }
       }
-
-      textStorage.endEditing()
-      codeView.selectedRange = selected
+      storage.endEditing()
+      textView.selectedRange = selected
     }
   }
 }

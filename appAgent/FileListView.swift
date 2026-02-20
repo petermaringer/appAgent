@@ -43,66 +43,8 @@ struct FileListView: View {
 
       List {
         OutlineGroup(rootFiles, children: \.children) { node in
-          HStack {
-            if node.isFolder {
-              Image(systemName: "folder.fill")
-                .foregroundColor(.blue)
-            } else {
-              Image(systemName: "doc.text")
-            }
-
-            if renamingNode?.id == node.id {
-              HStack(spacing: 4) {
-  TextField("", text: $newName)
-    .textFieldStyle(.roundedBorder)
-    .frame(maxWidth: 200)
-
-  Button {
-  renameNode(node)
-} label: {
-  Image(systemName: "checkmark.circle.fill")
-    .font(.system(size: 22, weight: .bold))
-    .foregroundColor(.green)
-    .frame(width: 32, height: 32)
+  FileNodeRow(node: node, selectedFile: $selectedFile, targetFile: targetFile, renamingNode: $renamingNode, newName: $newName, renameAction: renameNode, deleteAction: deleteNode)
 }
-.buttonStyle(.plain)
-}
-            } else {
-              Text(node.file.lastPathComponent)
-                .foregroundColor(node.file == targetFile ? .yellow : (node.isFolder ? .blue : .primary))
-            }
-
-            Spacer()
-
-            if node.file == targetFile {
-              Image(systemName: "star.fill")
-                .foregroundColor(.yellow)
-            }
-          }
-          .contentShape(Rectangle())
-          .onTapGesture {
-  guard renamingNode == nil else { return }
-
-  if node.isFolder {
-    //node.reloadChildren()
-  } else {
-    selectedFile = node
-  }
-}
-          .onDrag {
-            NSItemProvider(object: node.file as NSURL)
-          }
-          .onDrop(of: ["public.file-url"], delegate: FileNodeDropDelegate(destination: node))
-          .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-              Button("Löschen", role: .destructive) { deleteNode(node) }
-              Button("Umbenennen") {
-  withAnimation(.none) {
-    renamingNode = node
-    newName = node.file.lastPathComponent
-  }
-}
-          }
-        }
       }
     }
     .onAppear(perform: loadFiles)
@@ -167,6 +109,73 @@ func removeNode(_ node: FileNode, from array: inout [FileNode]) {
   }
 }
 
+}
+
+struct FileNodeRow: View {
+  @ObservedObject var node: FileListView.FileNode
+  @Binding var selectedFile: FileListView.FileNode?
+  let targetFile: URL?
+  @Binding var renamingNode: FileListView.FileNode?
+  @Binding var newName: String
+
+  let renameAction: (FileListView.FileNode) -> Void
+  let deleteAction: (FileListView.FileNode) -> Void
+
+  var body: some View {
+    HStack {
+      Image(systemName: node.isFolder ? "folder.fill" : "doc.text")
+        .foregroundColor(node.isFolder ? .blue : .primary)
+
+      if renamingNode?.id == node.id {
+        HStack(spacing: 6) {
+          TextField("", text: $newName)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 200)
+          Button {
+            renameAction(node)
+          } label: {
+            Image(systemName: "checkmark.circle.fill")
+              .font(.system(size: 22, weight: .bold))
+              .foregroundColor(.green)
+              .frame(width: 32, height: 32)
+          }
+          .buttonStyle(.plain)
+        }
+      } else {
+        Text(node.file.lastPathComponent)
+          .foregroundColor(node.file == targetFile ? .yellow : (node.isFolder ? .blue : .primary))
+      }
+
+      Spacer()
+
+      if node.file == targetFile {
+        Image(systemName: "star.fill")
+          .foregroundColor(.yellow)
+      }
+    }
+    .contentShape(Rectangle())
+    .onTapGesture {
+      guard renamingNode == nil else { return }
+
+      if node.isFolder {
+        // Toggle children visibility
+        if node.children?.isEmpty == true {
+          node.reloadChildren()
+        }
+      } else {
+        selectedFile = node
+      }
+    }
+    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+      Button("Löschen", role: .destructive) { deleteAction(node) }
+      Button("Umbenennen") {
+        withAnimation(.none) {
+          renamingNode = node
+          newName = node.file.lastPathComponent
+        }
+      }
+    }
+  }
 }
 
 struct FileNodeDropDelegate: DropDelegate {

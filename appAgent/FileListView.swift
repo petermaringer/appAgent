@@ -52,9 +52,19 @@ struct FileListView: View {
             }
 
             if renamingNode?.id == node.id {
-              TextField("", text: $newName, onCommit: { renameNode(node) })
-                .textFieldStyle(.roundedBorder)
-                .frame(maxWidth: 200)
+              HStack(spacing: 4) {
+  TextField("", text: $newName)
+    .textFieldStyle(.roundedBorder)
+    .frame(maxWidth: 200)
+
+  Button {
+    renameNode(node)
+  } label: {
+    Image(systemName: "checkmark.circle.fill")
+      .foregroundColor(.green)
+  }
+  .buttonStyle(.plain)
+}
             } else {
               Text(node.file.lastPathComponent)
                 .foregroundColor(node.file == targetFile ? .yellow : (node.isFolder ? .blue : .primary))
@@ -108,19 +118,53 @@ struct FileListView: View {
       .map { FileNode(file: $0) }
   }
 
-  func renameNode(_ node: FileNode) {
-    guard !newName.isEmpty else { return }
-    let newURL = node.file.deletingLastPathComponent().appendingPathComponent(newName)
-    try? FileManager.default.moveItem(at: node.file, to: newURL)
-    node.file = newURL
+ func renameNode(_ node: FileNode) {
+  let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+  guard !trimmed.isEmpty else { return }
+
+  let newURL = node.file.deletingLastPathComponent().appendingPathComponent(trimmed)
+
+  guard newURL != node.file else {
     renamingNode = nil
-    loadFiles()
+    return
   }
 
+  do {
+    try FileManager.default.moveItem(at: node.file, to: newURL)
+    node.file = newURL
+  } catch {
+    return
+  }
+
+  renamingNode = nil
+}
+
   func deleteNode(_ node: FileNode) {
-    try? FileManager.default.removeItem(at: node.file)
+  do {
+    try FileManager.default.removeItem(at: node.file)
+  } catch {
+    return
+  }
+
+  if let parentURL = node.file.deletingLastPathComponent() as URL?,
+     let parent = findNode(for: parentURL, in: rootFiles) {
+    parent.reloadChildren()
+  } else {
     loadFiles()
   }
+}
+
+func findNode(for url: URL, in nodes: [FileNode]) -> FileNode? {
+  for node in nodes {
+    if node.file == url { return node }
+    if let children = node.children,
+       let found = findNode(for: url, in: children) {
+      return found
+    }
+  }
+  return nil
+}
+
 }
 
 struct FileNodeDropDelegate: DropDelegate {

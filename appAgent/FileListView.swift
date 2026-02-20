@@ -9,7 +9,7 @@ struct FileListView: View {
   @State private var newName: String = ""
 
   class FileNode: Identifiable, ObservableObject {
-    let id = UUID()
+   var id: URL { file }
     @Published var file: URL
     @Published var children: [FileNode]? = nil
 
@@ -18,21 +18,21 @@ struct FileListView: View {
     init(file: URL) {
       self.file = file
       if file.hasDirectoryPath {
-        reloadChildren()
-      }
+  children = []
+}
     }
 
-    func reloadChildren() {
-      guard isFolder else { return }
-      let fm = FileManager.default
-      if let sub = try? fm.contentsOfDirectory(at: file, includingPropertiesForKeys: nil) {
-        children = sub
-          .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
-          .map { FileNode(file: $0) }
-      } else {
-        children = []
-      }
-    }
+   func reloadChildren() {
+  guard isFolder else { return }
+  let fm = FileManager.default
+  if let sub = try? fm.contentsOfDirectory(at: file, includingPropertiesForKeys: nil) {
+    children = sub
+      .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+      .map { FileNode(file: $0) }
+  } else {
+    children = []
+  }
+}
   }
 
   var body: some View {
@@ -58,12 +58,14 @@ struct FileListView: View {
     .frame(maxWidth: 200)
 
   Button {
-    renameNode(node)
-  } label: {
-    Image(systemName: "checkmark.circle.fill")
-      .foregroundColor(.green)
-  }
-  .buttonStyle(.plain)
+  renameNode(node)
+} label: {
+  Image(systemName: "checkmark.circle.fill")
+    .font(.system(size: 22, weight: .bold))
+    .foregroundColor(.green)
+    .frame(width: 32, height: 32)
+}
+.buttonStyle(.plain)
 }
             } else {
               Text(node.file.lastPathComponent)
@@ -79,24 +81,26 @@ struct FileListView: View {
           }
           .contentShape(Rectangle())
           .onTapGesture {
-            if node.isFolder {
-              node.reloadChildren()
-            } else {
-              selectedFile = node
-            }
-          }
+  guard renamingNode == nil else { return }
+
+  if node.isFolder {
+    //node.reloadChildren()
+  } else {
+    selectedFile = node
+  }
+}
           .onDrag {
             NSItemProvider(object: node.file as NSURL)
           }
           .onDrop(of: ["public.file-url"], delegate: FileNodeDropDelegate(destination: node))
           .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if !node.isFolder {
               Button("Löschen", role: .destructive) { deleteNode(node) }
               Button("Umbenennen") {
-                renamingNode = node
-                newName = node.file.lastPathComponent
-              }
-            }
+  withAnimation(.none) {
+    renamingNode = node
+    newName = node.file.lastPathComponent
+  }
+}
           }
         }
       }
@@ -146,23 +150,21 @@ struct FileListView: View {
     return
   }
 
-  if let parentURL = node.file.deletingLastPathComponent() as URL?,
-     let parent = findNode(for: parentURL, in: rootFiles) {
-    parent.reloadChildren()
-  } else {
-    loadFiles()
-  }
+  removeNode(node, from: &rootFiles)
 }
 
-func findNode(for url: URL, in nodes: [FileNode]) -> FileNode? {
-  for node in nodes {
-    if node.file == url { return node }
-    if let children = node.children,
-       let found = findNode(for: url, in: children) {
-      return found
+func removeNode(_ node: FileNode, from array: inout [FileNode]) {
+  if let index = array.firstIndex(where: { $0.id == node.id }) {
+    array.remove(at: index)
+    return
+  }
+
+  for i in array.indices {
+    if var children = array[i].children {
+      removeNode(node, from: &children)
+      array[i].children = children
     }
   }
-  return nil
 }
 
 }

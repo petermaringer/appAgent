@@ -23,24 +23,31 @@ struct FileListView: View {
     }
   }
 
-  var body: some View {
-    List {
-      ForEach(rootNodes) { node in
-        treeRow(node, level: 0)
-      }
-    }
-    .onDrop(of: [UTType.fileURL.identifier]) { providers in
-      handleRootDrop(providers)
-    }
-    .onAppear { loadRoot() }
-    .sheet(item: $selectedFile) { item in
-      FileEditorView(fileURL: item.url)
+ var body: some View {
+  List {
+    ForEach(rootNodes) { node in
+      treeRow(node, level: 0)
     }
   }
+  .onDrop(
+    of: [UTType.fileURL],
+    isTargeted: nil
+  ) { providers in
+    handleRootDrop(providers)
+  }
+  .onAppear {
+    loadRoot()
+  }
+  .sheet(item: $selectedFile) { item in
+    FileEditorView(fileURL: item.url)
+  }
+}
 
   @ViewBuilder
-  func treeRow(_ node: FileNode, level: Int) -> some View {
+ func treeRow(_ node: FileNode, level: Int) -> AnyView {
+  AnyView(
     VStack(spacing: 0) {
+
       HStack {
         Spacer().frame(width: CGFloat(level) * 20)
 
@@ -80,7 +87,6 @@ struct FileListView: View {
         Spacer()
       }
       .padding(6)
-      .background(dropTarget == node.id ? Color.blue.opacity(0.15) : Color.clear)
       .contentShape(Rectangle())
       .onTapGesture {
         if node.isFolder {
@@ -92,27 +98,24 @@ struct FileListView: View {
       .onDrag {
         NSItemProvider(object: node.url as NSURL)
       }
-      .onDrop(of: [UTType.fileURL.identifier],
-              isTargeted: Binding(
-                get: { dropTarget == node.id },
-                set: { dropTarget = $0 ? node.id : nil }
-              )
+      .onDrop(
+        of: [UTType.fileURL],
+        isTargeted: Binding(
+          get: { dropTarget == node.id },
+          set: { dropTarget = $0 ? node.id : nil }
+        )
       ) { providers in
         handleDrop(providers, into: node)
       }
-      .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-        if !node.isFolder {
-          Button(role: .destructive) { delete(node) } label: {
-            Label("Löschen", systemImage: "trash")
-          }
 
-          Button {
-            renamingNode = node.id
-            newName = node.url.lastPathComponent
-          } label: {
-            Label("Umbenennen", systemImage: "pencil")
-          }
+      if node.isFolder && node.isExpanded {
+        ForEach(node.children) { child in
+          treeRow(child, level: level + 1)
         }
+      }
+    }
+  )
+}
       }
 
       if node.isFolder && node.isExpanded {

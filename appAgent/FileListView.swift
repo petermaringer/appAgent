@@ -1,4 +1,198 @@
 import SwiftUI
+import UniformTypeIdentifiers
+
+struct FileListView: View {
+  let projectFolder: URL
+  @State private var rootFiles: [FileNode] = []
+  @State private var selectedFile: FileNode?
+  @State private var renamingNode: FileNode?
+  @State private var newName: String = ""
+  @State private var dropTarget: UUID?
+
+  class FileNode: Identifiable, ObservableObject {
+    let id = UUID()
+    @Published var file: URL
+    @Published var children: [FileNode]? = nil
+
+    var isFolder: Bool { file.hasDirectoryPath }
+
+    init(file: URL) {
+      self.file = file
+      if isFolder { reloadChildren() }
+    }
+
+    func reloadChildren() {
+      guard isFolder else { return }
+      let fm = FileManager.default
+      guard let contents = try? fm.contentsOfDirectory(at: file, includingPropertiesForKeys: nil) else {
+        children = []
+        return
+      }
+
+      let folders = contents.filter { $0.hasDirectoryPath }
+        .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+
+      let files = contents.filter { !$0.hasDirectoryPath }
+        .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+
+      children = (folders + files).map { FileNode(file: $0) }
+    }
+  }
+
+  var body: some View {
+    List {
+      OutlineGroup(rootFiles, children: \.children) { node in
+        row(for: node)
+      }
+      .onInsert(of: [UTType.fileURL.identifier]) { index, providers in
+        handleRootDrop(providers: providers)
+      }
+    }
+    .onAppear(perform: loadFiles)
+    .sheet(item: $selectedFile) { item in
+      FileEditorView(fileURL: item.file)
+    }
+  }
+
+  // MARK: Row
+
+  func row(for node: FileNode) -> some View {
+    HStack {
+      Image(systemName: node.isFolder ? "folder.fill" : "doc.text")
+        .foregroundColor(node.isFolder ? .blue : .primary)
+
+      if renamingNode?.id == node.id {
+        HStack(spacing: 6) {
+          TextField("", text: $newName)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 180)
+
+          Button {
+            renameNode(node)
+          } label: {
+            Image(systemName: "checkmark.circle.fill")
+          }
+
+          Button {
+            renamingNode = nil
+          } label: {
+            Image(systemName: "xmark.circle.fill")
+          }
+        }
+      } else {
+        Text(node.file.lastPathComponent)
+          .foregroundColor(node.isFolder ? .blue : .primary)
+      }
+
+      Spacer()
+    }
+    .padding(4)
+    .background(dropTarget == node.id ? Color.blue.opacity(0.15) : Color.clear)
+    .contentShape(Rectangle())
+    .onTapGesture {
+      if node.isFolder {
+        node.reloadChildren()
+      } else {
+        selectedFile = node
+      }
+    }
+    .onDrag {
+      NSItemProvider(object: node.file as NSURL)
+    }
+    .onDrop(of: [UTType.fileURL.identifier],
+            isTargeted: Binding(
+              get: { dropTarget == node.id },
+              set: { isOver in dropTarget = isOver ? node.id : nil }
+            )
+    ) { providers in
+      handleDrop(providers: providers, destination: node)
+    }
+    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+      if !node.isFolder {
+        Button(role: .destructive) { deleteNode(node) } label: {
+          Label("Löschen", systemImage: "trash")
+        }
+
+        Button {
+          renamingNode = node
+          newName = node.file.lastPathComponent
+        } label: {
+          Label("Umbenennen", systemImage: "pencil")
+        }
+      }
+    }
+  }
+
+  // MARK: Drop Logic
+
+  func handleDrop(providers: [NSItemProvider], destination: FileNode) -> Bool {
+    guard destination.isFolder else { return false }
+
+    for provider in providers {
+      provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { data, _ in
+        guard let data = data as? Data,
+              let sourceURL = NSURL(absoluteURLWithDataRepresentation: data, relativeTo: nil) as URL? else { return }
+
+        let destURL = destination.file.appendingPathComponent(sourceURL.lastPathComponent)
+        try? FileManager.default.moveItem(at: sourceURL, to: destURL)
+
+        DispatchQueue.main.async {
+          loadFiles()
+        }
+      }
+    }
+    return true
+  }
+
+  func handleRootDrop(providers: [NSItemProvider]) {
+    for provider in providers {
+      provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { data, _ in
+        guard let data = data as? Data,
+              let sourceURL = NSURL(absoluteURLWithDataRepresentation: data, relativeTo: nil) as URL? else { return }
+
+        let destURL = projectFolder.appendingPathComponent(sourceURL.lastPathComponent)
+        try? FileManager.default.moveItem(at: sourceURL, to: destURL)
+
+        DispatchQueue.main.async {
+          loadFiles()
+        }
+      }
+    }
+  }
+
+  // MARK: File Ops
+
+  func loadFiles() {
+    let fm = FileManager.default
+    guard let contents = try? fm.contentsOfDirectory(at: projectFolder, includingPropertiesForKeys: nil) else {
+      rootFiles = []
+      return
+    }
+
+    let folders = contents.filter { $0.hasDirectoryPath }
+      .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+
+    let files = contents.filter { !$0.hasDirectoryPath }
+      .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+
+    rootFiles = (folders + files).map { FileNode(file: $0) }
+  }
+
+  func renameNode(_ node: FileNode) {
+    guard !newName.isEmpty else { return }
+    let newURL = node.file.deletingLastPathComponent().appendingPathComponent(newName)
+    try? FileManager.default.moveItem(at: node.file, to: newURL)
+    renamingNode = nil
+    loadFiles()
+  }
+
+  func deleteNode(_ node: FileNode) {
+    try? FileManager.default.removeItem(at: node.file)
+    loadFiles()
+  }
+}
+
+/*import SwiftUI
 
 struct FileListView: View {
   let projectFolder: URL
@@ -179,7 +373,7 @@ struct FileNodeDropDelegate: DropDelegate {
     }
     return true
   }
-}
+}*/
 
 /*import SwiftUI
 

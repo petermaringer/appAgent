@@ -19,9 +19,9 @@ struct FileListView: View {
   @State private var newName = ""
   @State private var dropTarget: UUID?
 
-  init(rootURL: URL) {
-    _rootURL = State(initialValue: rootURL)
-  }
+ init(projectFolder: URL) {
+  _rootURL = State(initialValue: projectFolder)
+}
 
   var body: some View {
     List {

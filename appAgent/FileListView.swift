@@ -2,206 +2,176 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct FileListView: View {
-  let projectFolder: URL
 
+  struct FileNode: Identifiable, Hashable {
+    let id = UUID()
+    var url: URL
+    var isFolder: Bool
+    var children: [FileNode] = []
+    var isExpanded: Bool = false
+  }
+
+  @State private var rootURL: URL
   @State private var rootNodes: [FileNode] = []
+
   @State private var selectedFile: FileNode?
   @State private var renamingNode: UUID?
-  @State private var newName: String = ""
+  @State private var newName = ""
   @State private var dropTarget: UUID?
 
-  class FileNode: Identifiable, ObservableObject {
-    let id = UUID()
-    @Published var url: URL
-    @Published var children: [FileNode] = []
-    @Published var isExpanded = false
+  init(rootURL: URL) {
+    _rootURL = State(initialValue: rootURL)
+  }
 
-    var isFolder: Bool { url.hasDirectoryPath }
-
-    init(url: URL) {
-      self.url = url
+  var body: some View {
+    List {
+      ForEach(rootNodes) { node in
+        treeRow(node, level: 0)
+      }
+    }
+    .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
+      handleRootDrop(providers)
+    }
+    .onAppear {
+      loadRoot()
+    }
+    .sheet(item: $selectedFile) { item in
+      FileEditorView(fileURL: item.url)
     }
   }
 
- var body: some View {
-  List {
-    ForEach(rootNodes) { node in
-      treeRow(node, level: 0)
-    }
-  }
-  .onDrop(
-    of: [UTType.fileURL],
-    isTargeted: nil
-  ) { providers in
-    handleRootDrop(providers)
-  }
-  .onAppear {
-    loadRoot()
-  }
-  .sheet(item: $selectedFile) { item in
-    FileEditorView(fileURL: item.url)
-  }
-}
+  func treeRow(_ node: FileNode, level: Int) -> AnyView {
+    AnyView(
+      VStack(spacing: 0) {
 
-  @ViewBuilder
- func treeRow(_ node: FileNode, level: Int) -> AnyView {
-  AnyView(
-    VStack(spacing: 0) {
+        HStack {
+          Spacer().frame(width: CGFloat(level) * 20)
 
-      HStack {
-        Spacer().frame(width: CGFloat(level) * 20)
-
-        if node.isFolder {
-          Image(systemName: node.isExpanded ? "chevron.down" : "chevron.right")
-            .font(.system(size: 12, weight: .bold))
-        } else {
-          Spacer().frame(width: 12)
-        }
-
-        Image(systemName: node.isFolder ? "folder.fill" : "doc.text")
-          .foregroundColor(node.isFolder ? .blue : .primary)
-
-        if renamingNode == node.id {
-          HStack(spacing: 6) {
-            TextField("", text: $newName)
-              .textFieldStyle(.roundedBorder)
-              .frame(maxWidth: 180)
-
-            Button {
-              rename(node)
-            } label: {
-              Image(systemName: "checkmark.circle.fill")
-            }
-
-            Button {
-              renamingNode = nil
-            } label: {
-              Image(systemName: "xmark.circle.fill")
-            }
+          if node.isFolder {
+            Image(systemName: node.isExpanded ? "chevron.down" : "chevron.right")
+              .font(.system(size: 12, weight: .bold))
+          } else {
+            Spacer().frame(width: 12)
           }
-        } else {
-          Text(node.url.lastPathComponent)
+
+          Image(systemName: node.isFolder ? "folder.fill" : "doc.text")
             .foregroundColor(node.isFolder ? .blue : .primary)
+
+          if renamingNode == node.id {
+            HStack(spacing: 6) {
+              TextField("", text: $newName)
+                .textFieldStyle(.roundedBorder)
+                .frame(maxWidth: 180)
+
+              Button {
+                rename(node)
+              } label: {
+                Image(systemName: "checkmark.circle.fill")
+              }
+
+              Button {
+                renamingNode = nil
+              } label: {
+                Image(systemName: "xmark.circle.fill")
+              }
+            }
+          } else {
+            Text(node.url.lastPathComponent)
+              .foregroundColor(node.isFolder ? .blue : .primary)
+          }
+
+          Spacer()
+        }
+        .padding(6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+          if node.isFolder {
+            toggle(node)
+          } else {
+            selectedFile = node
+          }
+        }
+        .swipeActions {
+          Button(role: .destructive) {
+            delete(node)
+          } label: {
+            Label("Delete", systemImage: "trash")
+          }
+
+          Button {
+            renamingNode = node.id
+            newName = node.url.lastPathComponent
+          } label: {
+            Label("Rename", systemImage: "pencil")
+          }
+        }
+        .onDrag {
+          NSItemProvider(object: node.url as NSURL)
+        }
+        .onDrop(
+          of: [UTType.fileURL],
+          isTargeted: Binding(
+            get: { dropTarget == node.id },
+            set: { dropTarget = $0 ? node.id : nil }
+          )
+        ) { providers in
+          handleDrop(providers, into: node)
         }
 
-        Spacer()
-      }
-      .padding(6)
-      .contentShape(Rectangle())
-      .onTapGesture {
-        if node.isFolder {
-          toggle(node)
-        } else {
-          selectedFile = node
+        if node.isFolder && node.isExpanded {
+          ForEach(node.children) { child in
+            treeRow(child, level: level + 1)
+          }
         }
       }
-      .onDrag {
-        NSItemProvider(object: node.url as NSURL)
-      }
-      .onDrop(
-        of: [UTType.fileURL],
-        isTargeted: Binding(
-          get: { dropTarget == node.id },
-          set: { dropTarget = $0 ? node.id : nil }
-        )
-      ) { providers in
-        handleDrop(providers, into: node)
-      }
-
-      if node.isFolder && node.isExpanded {
-        ForEach(node.children) { child in
-          treeRow(child, level: level + 1)
-        }
-      }
-    }
-  )
-}
-      }
-
-      if node.isFolder && node.isExpanded {
-        ForEach(node.children) { child in
-          treeRow(child, level: level + 1)
-        }
-      }
-    }
+    )
   }
-
-  // MARK: Expand
-
-  func toggle(_ node: FileNode) {
-    if !node.isExpanded {
-      loadChildren(for: node)
-    }
-    node.isExpanded.toggle()
-  }
-
-  // MARK: Load
 
   func loadRoot() {
-    rootNodes = loadNodes(from: projectFolder)
+    rootNodes = loadDirectory(rootURL)
   }
 
-  func loadChildren(for node: FileNode) {
-    node.children = loadNodes(from: node.url)
-  }
+  func loadDirectory(_ url: URL) -> [FileNode] {
+    guard let items = try? FileManager.default.contentsOfDirectory(
+      at: url,
+      includingPropertiesForKeys: [.isDirectoryKey],
+      options: [.skipsHiddenFiles]
+    ) else { return [] }
 
-  func loadNodes(from folder: URL) -> [FileNode] {
-    guard let contents = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else {
-      return []
-    }
+    var nodes: [FileNode] = []
 
-    let folders = contents.filter { $0.hasDirectoryPath }
-      .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+    for item in items {
+      let values = try? item.resourceValues(forKeys: [.isDirectoryKey])
+      let isFolder = values?.isDirectory ?? false
 
-    let files = contents.filter { !$0.hasDirectoryPath }
-      .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+      var node = FileNode(url: item, isFolder: isFolder)
 
-    return (folders + files).map { FileNode(url: $0) }
-  }
-
-  // MARK: Drop
-
-  func handleDrop(_ providers: [NSItemProvider], into node: FileNode) -> Bool {
-    guard node.isFolder else { return false }
-
-    for provider in providers {
-      provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { data, _ in
-        guard let data = data as? Data,
-              let source = NSURL(absoluteURLWithDataRepresentation: data, relativeTo: nil) as URL? else { return }
-
-        let dest = node.url.appendingPathComponent(source.lastPathComponent)
-        try? FileManager.default.moveItem(at: source, to: dest)
-
-        DispatchQueue.main.async {
-          loadRoot()
-        }
+      if isFolder {
+        node.children = loadDirectory(item)
       }
+
+      nodes.append(node)
     }
-    return true
-  }
 
-  func handleRootDrop(_ providers: [NSItemProvider]) -> Bool {
-    for provider in providers {
-      provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { data, _ in
-        guard let data = data as? Data,
-              let source = NSURL(absoluteURLWithDataRepresentation: data, relativeTo: nil) as URL? else { return }
-
-        let dest = projectFolder.appendingPathComponent(source.lastPathComponent)
-        try? FileManager.default.moveItem(at: source, to: dest)
-
-        DispatchQueue.main.async {
-          loadRoot()
-        }
+    return nodes.sorted {
+      if $0.isFolder != $1.isFolder {
+        return $0.isFolder
       }
+      return $0.url.lastPathComponent.lowercased() <
+             $1.url.lastPathComponent.lowercased()
     }
-    return true
   }
 
-  // MARK: File Ops
+  func toggle(_ node: FileNode) {
+    updateNode(node) { $0.isExpanded.toggle() }
+  }
 
   func rename(_ node: FileNode) {
-    let newURL = node.url.deletingLastPathComponent().appendingPathComponent(newName)
+    let newURL = node.url.deletingLastPathComponent()
+      .appendingPathComponent(newName)
+
     try? FileManager.default.moveItem(at: node.url, to: newURL)
+
     renamingNode = nil
     loadRoot()
   }
@@ -209,6 +179,57 @@ struct FileListView: View {
   func delete(_ node: FileNode) {
     try? FileManager.default.removeItem(at: node.url)
     loadRoot()
+  }
+
+  func handleRootDrop(_ providers: [NSItemProvider]) -> Bool {
+    for provider in providers {
+      provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+        guard let data = item as? Data,
+              let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+
+        let target = rootURL.appendingPathComponent(url.lastPathComponent)
+
+        try? FileManager.default.moveItem(at: url, to: target)
+
+        DispatchQueue.main.async {
+          loadRoot()
+        }
+      }
+    }
+    return true
+  }
+
+  func handleDrop(_ providers: [NSItemProvider], into node: FileNode) -> Bool {
+    guard node.isFolder else { return false }
+
+    for provider in providers {
+      provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+        guard let data = item as? Data,
+              let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+
+        let target = node.url.appendingPathComponent(url.lastPathComponent)
+
+        try? FileManager.default.moveItem(at: url, to: target)
+
+        DispatchQueue.main.async {
+          loadRoot()
+        }
+      }
+    }
+    return true
+  }
+
+  func updateNode(_ node: FileNode, update: (inout FileNode) -> Void) {
+    func recurse(_ nodes: inout [FileNode]) {
+      for i in nodes.indices {
+        if nodes[i].id == node.id {
+          update(&nodes[i])
+          return
+        }
+        recurse(&nodes[i].children)
+      }
+    }
+    recurse(&rootNodes)
   }
 }
 

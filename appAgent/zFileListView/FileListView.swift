@@ -1,63 +1,119 @@
 import SwiftUI
 
-struct FileListView: View {
-  let projectFolder: URL
-  @State private var rootFiles: [FileNode] = []
-  @State private var selectedFile: FileNode?
-  @State private var targetFile: URL?
-  @State private var renamingNode: FileNode?
-  @State private var newName: String = ""
+struct FlatFileNode: Identifiable {
+  let node: FileNode
+  let depth: Int
+  var id: UUID { node.id }
+}
+
+struct FileRowView: View {
+  @ObservedObject var node: FileNode
+  let depth: Int
+  @Binding var renamingNode: FileNode?
+  @Binding var newName: String
+  @FocusState private var isRenamingFocused: Bool
+  var renameAction: (FileNode) -> Void
+  var deleteAction: (FileNode) -> Void
 
   var body: some View {
-    VStack(alignment: .leading) {
-      Text("Projekt-Dateien")
-        .font(.headline)
-        .padding(.bottom, 5)
+    HStack {
+      Image(systemName: node.isFolder ? "folder.fill" : "doc.text")
+        .foregroundColor(node.isFolder ? .blue : .primary)
 
-      ScrollView {
-        LazyVStack(alignment: .leading, spacing: 0) {
-          ForEach(rootFiles) { node in
-            FileRowView(
-              node: node,
-              selectedFile: $selectedFile,
-              targetFile: $targetFile,
-              renamingNode: $renamingNode,
-              newName: $newName,
-              renameAction: renameNode,
-              deleteAction: deleteNode
-            )
+      Text(node.file.lastPathComponent)
+        .lineLimit(1)
+
+      Spacer()
+
+      if node.isFolder {
+        Image(systemName: "chevron.right")
+          .rotationEffect(.degrees(node.isExpanded ? 90 : 0))
+          .foregroundColor(.gray)
+          .animation(.easeInOut(duration: 0.2), value: node.isExpanded)
+      }
+
+      if renamingNode?.id == node.id {
+        HStack(spacing: 5) {
+          TextField("", text: $newName)
+            .textFieldStyle(.roundedBorder)
+            .frame(maxWidth: 200)
+            .focused($isRenamingFocused)
+
+          Button(action: {
+            renameAction(node)
+            renamingNode = nil
+            isRenamingFocused = false
+          }) {
+            Image(systemName: "checkmark.circle.fill")
+              .foregroundColor(.green)
+          }
+        }
+        .transition(.opacity)
+      }
+    }
+    .padding(.leading, CGFloat(depth) * 20)
+    .padding(.vertical, 5)
+    .contentShape(Rectangle())
+    .onTapGesture {
+      guard renamingNode?.id != node.id else { return }
+      if node.isFolder {
+        withAnimation(.easeInOut(duration: 0.2)) {
+          node.isExpanded.toggle()
+          if node.isExpanded { node.reloadChildren() }
+        }
+      }
+    }
+    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+      Button("Löschen", role: .destructive) { deleteAction(node) }
+      Button("Umbenennen") {
+        withAnimation(.none) {
+          renamingNode = node
+          newName = node.file.lastPathComponent
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isRenamingFocused = true
           }
         }
       }
     }
-    .onAppear(perform: loadFiles)
-    .sheet(item: $selectedFile) { item in
-      FileEditorView(fileURL: item.file)
+  }
+}
+
+struct FileListView: View {
+  @State var rootNodes: [FileNode]
+  @State private var renamingNode: FileNode? = nil
+  @State private var newName: String = ""
+  var renameAction: (FileNode) -> Void = { _ in }
+  var deleteAction: (FileNode) -> Void = { _ in }
+
+  private var visibleNodes: [FlatFileNode] {
+    func flatten(nodes: [FileNode], depth: Int) -> [FlatFileNode] {
+      nodes.flatMap { node in
+        var result = [FlatFileNode(node: node, depth: depth)]
+        if node.isExpanded, let children = node.children {
+          result += flatten(nodes: children, depth: depth + 1)
+        }
+        return result
+      }
     }
+    flatten(nodes: rootNodes, depth: 0)
   }
 
-  func loadFiles() {
-    let fm = FileManager.default
-    guard let contents = try? fm.contentsOfDirectory(at: projectFolder, includingPropertiesForKeys: nil) else {
-      rootFiles = []
-      return
+  var body: some View {
+    List {
+      ForEach(visibleNodes) { flatNode in
+        VStack(spacing: 0) {
+          FileRowView(
+            node: flatNode.node,
+            depth: flatNode.depth,
+            renamingNode: $renamingNode,
+            newName: $newName,
+            renameAction: renameAction,
+            deleteAction: deleteAction
+          )
+          Divider()
+        }
+      }
     }
-    rootFiles = contents
-      .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
-      .map { FileNode(file: $0) }
-  }
-
-  func renameNode(_ node: FileNode) {
-    guard !newName.isEmpty else { return }
-    let newURL = node.file.deletingLastPathComponent().appendingPathComponent(newName)
-    try? FileManager.default.moveItem(at: node.file, to: newURL)
-    node.file = newURL
-    renamingNode = nil
-    loadFiles()
-  }
-
-  func deleteNode(_ node: FileNode) {
-    try? FileManager.default.removeItem(at: node.file)
-    loadFiles()
+    .listStyle(.plain)
   }
 }

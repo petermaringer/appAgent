@@ -5,6 +5,7 @@ class FileNode: Identifiable, ObservableObject {
   let id = UUID()
   @Published var file: URL
   @Published var children: [FileNode]? = nil
+  @Published var isExpanded: Bool = false // Folder-Status
 
   var isFolder: Bool { file.hasDirectoryPath }
 

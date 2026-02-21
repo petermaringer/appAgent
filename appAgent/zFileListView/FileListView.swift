@@ -7,14 +7,17 @@ extension Notification.Name {
 }
 
 // MARK: - File Node
-final class FileNode {
+final class FileNode: Identifiable {
+  var id = UUID()
   var url: URL
   var children: [FileNode] = []
   var isExpanded = false
   var isFolder: Bool { url.hasDirectoryPath }
-  var isRenaming = false   // Rename-Status direkt im Node
+  var isRenaming = false
 
-  init(url: URL) { self.url = url }
+  init(url: URL) {
+    self.url = url
+  }
 }
 
 // MARK: - UIKit Controller
@@ -36,12 +39,9 @@ final class FileListViewController: UITableViewController {
 
   private func loadChildren(of folder: URL) -> [FileNode] {
     let fm = FileManager.default
-    guard let urls = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
-    else { return [] }
-
-    return urls
-      .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
-      .map { FileNode(url: $0) }
+    guard let urls = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) else { return [] }
+    return urls.sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+               .map { FileNode(url: $0) }
   }
 
   private func rebuildVisible() {
@@ -59,69 +59,80 @@ final class FileListViewController: UITableViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+    tableView.dragInteractionEnabled = true
+    tableView.dragDelegate = self
+    tableView.dropDelegate = self
   }
 
-  override func tableView(_ tableView: UITableView,
-                          numberOfRowsInSection section: Int) -> Int {
+  // MARK: - UITableView DataSource / Delegate
+  override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
     visibleNodes.count
   }
 
-  override func tableView(_ tableView: UITableView,
-                          cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 
     let item = visibleNodes[indexPath.row]
     let node = item.node
 
     let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+    var content = cell.defaultContentConfiguration()
+
+    content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
+    cell.contentConfiguration = content
     cell.indentationLevel = item.depth
     cell.indentationWidth = 20
-    cell.accessoryView = nil
 
-    // Icon + Text oder TextField+Häkchen
-    if node.isRenaming && !node.isFolder {
+    // Pfeile für Ordner
+    if node.isFolder {
+      let symbolName = node.isExpanded ? "chevron.down" : "chevron.right"
+      let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+      let image = UIImage(systemName: symbolName, withConfiguration: config)
+      let arrow = UIImageView(image: image)
+      cell.accessoryView = arrow
+    } else {
+      cell.accessoryView = nil
+    }
 
-      let tf = UITextField(frame: CGRect(x: 0, y: 0, width: 200, height: 30))
+    // Rename-Modus
+    if node.isRenaming {
+      let tf = UITextField(frame: .zero)
+      tf.translatesAutoresizingMaskIntoConstraints = false
       tf.text = node.url.lastPathComponent
       tf.borderStyle = .roundedRect
       tf.returnKeyType = .done
-      tf.addTarget(self, action: #selector(renameCommitTextField(_:)), for: .editingDidEndOnExit)
-      renamingTextField = tf
 
-      let check = UIButton(type: .system)
-      check.setTitle("✅", for: .normal)
-      check.addAction(UIAction { _ in
-        self.renameCommitButton(for: node)
+      let button = UIButton(type: .system)
+      button.setTitle("✅", for: .normal)
+      button.addAction(UIAction { [weak self] _ in
+        self?.commitRename(node: node)
       }, for: .touchUpInside)
 
-      let stack = UIStackView(arrangedSubviews: [tf, check])
+      let stack = UIStackView(arrangedSubviews: [tf, button])
       stack.axis = .horizontal
       stack.spacing = 8
-      cell.accessoryView = stack
+      stack.alignment = .center
 
+      cell.contentView.subviews.forEach { $0.removeFromSuperview() }
+      cell.contentView.addSubview(stack)
+      NSLayoutConstraint.activate([
+        stack.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16 + CGFloat(item.depth) * 20),
+        stack.trailingAnchor.constraint(equalTo: cell.contentView.trailingAnchor, constant: -16),
+        stack.topAnchor.constraint(equalTo: cell.contentView.topAnchor, constant: 4),
+        stack.bottomAnchor.constraint(equalTo: cell.contentView.bottomAnchor, constant: -4)
+      ])
+
+      renamingTextField = tf
+      tf.becomeFirstResponder()
     } else {
-      var content = cell.defaultContentConfiguration()
       content.text = node.url.lastPathComponent
-      content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
       cell.contentConfiguration = content
-
-      if node.isFolder {
-        let symbolName = node.isExpanded ? "chevron.down" : "chevron.right"
-        let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-        let image = UIImage(systemName: symbolName, withConfiguration: config)
-        let arrow = UIImageView(image: image)
-        cell.accessoryView = arrow
-      }
     }
 
     return cell
   }
 
-  override func tableView(_ tableView: UITableView,
-                          didSelectRowAt indexPath: IndexPath) {
-
+  override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     let node = visibleNodes[indexPath.row].node
-
-    // Wenn Rename aktiv, nichts tun
     if node.isRenaming { return }
 
     if node.isFolder {
@@ -135,13 +146,11 @@ final class FileListViewController: UITableViewController {
   }
 
   override func tableView(_ tableView: UITableView,
-                          trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath)
-  -> UISwipeActionsConfiguration? {
+                          trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
 
     let node = visibleNodes[indexPath.row].node
 
-    let delete = UIContextualAction(style: .destructive,
-                                     title: "Löschen") { _, _, completion in
+    let delete = UIContextualAction(style: .destructive, title: "Löschen") { _, _, completion in
       try? FileManager.default.removeItem(at: node.url)
       self.loadFolder(self.rootNodes.first?.url.deletingLastPathComponent() ?? node.url)
       completion(true)
@@ -156,64 +165,77 @@ final class FileListViewController: UITableViewController {
     return UISwipeActionsConfiguration(actions: [delete, rename])
   }
 
-  @objc private func renameCommitTextField(_ tf: UITextField) {
-    guard let indexPath = visibleNodes.firstIndex(where: { $0.node.isRenaming }),
-          let text = tf.text else { return }
-    let node = visibleNodes[indexPath].node
-    commitRename(node, newName: text)
-  }
-
-  private func renameCommitButton(for node: FileNode) {
-    guard let text = renamingTextField?.text else { return }
-    commitRename(node, newName: text)
-  }
-
-  private func commitRename(_ node: FileNode, newName: String) {
-    let newURL = node.url.deletingLastPathComponent().appendingPathComponent(newName)
+  // MARK: - Rename Commit
+  private func commitRename(node: FileNode) {
+    guard let tf = renamingTextField, let text = tf.text else { return }
+    let newURL = node.url.deletingLastPathComponent().appendingPathComponent(text)
     try? FileManager.default.moveItem(at: node.url, to: newURL)
     node.url = newURL
     node.isRenaming = false
-
-    if let row = visibleNodes.firstIndex(where: { $0.node === node }) {
-      tableView.reloadRows(at: [IndexPath(row: row, section: 0)], with: .none)
-    }
+    rebuildVisible()
+    tableView.reloadData()
   }
 }
 
-import SwiftUI
+// MARK: - Drag & Drop
+extension FileListViewController: UITableViewDragDelegate, UITableViewDropDelegate {
+  func tableView(_ tableView: UITableView, itemsForBeginning session: UIDragSession, at indexPath: IndexPath) -> [UIDragItem] {
+    let node = visibleNodes[indexPath.row].node
+    guard !node.isFolder && !node.isRenaming else { return [] }
+    let provider = NSItemProvider(object: node.url as NSURL)
+    return [UIDragItem(itemProvider: provider)]
+  }
 
+  func tableView(_ tableView: UITableView, performDropWith coordinator: UITableViewDropCoordinator) { }
+
+  func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
+    let node = visibleNodes[indexPath.row].node
+    return !node.isFolder && !node.isRenaming
+  }
+
+  func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
+    let sourceNode = visibleNodes[sourceIndexPath.row].node
+    let destNode = visibleNodes[destinationIndexPath.row].node
+    guard destNode.isFolder else { return }
+
+    let newURL = destNode.url.appendingPathComponent(sourceNode.url.lastPathComponent)
+    try? FileManager.default.moveItem(at: sourceNode.url, to: newURL)
+    sourceNode.url = newURL
+    if let idx = rootNodes.firstIndex(where: { $0 === sourceNode }) { rootNodes.remove(at: idx) }
+    destNode.children.append(sourceNode)
+    rebuildVisible()
+    tableView.reloadData()
+  }
+
+  func tableView(_ tableView: UITableView,
+                 targetIndexPathForMoveFromRowAt sourceIndexPath: IndexPath,
+                 toProposedIndexPath proposedDestinationIndexPath: IndexPath) -> IndexPath {
+    let destNode = visibleNodes[proposedDestinationIndexPath.row].node
+    return destNode.isFolder ? proposedDestinationIndexPath : sourceIndexPath
+  }
+}
+
+// MARK: - SwiftUI Bridge
 struct FileListView: UIViewControllerRepresentable {
-
   let projectFolder: URL
 
-  func makeCoordinator() -> Coordinator {
-    Coordinator(self)
-  }
+  func makeCoordinator() -> Coordinator { Coordinator(self) }
 
   func makeUIViewController(context: Context) -> FileListViewController {
     let vc = FileListViewController()
     vc.loadFolder(projectFolder)
-    vc.onFileSelected = { url in
-      context.coordinator.openFile(url)
-    }
+    vc.onFileSelected = { url in context.coordinator.openFile(url) }
     return vc
   }
 
-  func updateUIViewController(_ uiViewController: FileListViewController,
-                              context: Context) { }
+  func updateUIViewController(_ uiViewController: FileListViewController, context: Context) { }
 
   class Coordinator {
     let parent: FileListView
-
-    init(_ parent: FileListView) {
-      self.parent = parent
-    }
+    init(_ parent: FileListView) { self.parent = parent }
 
     func openFile(_ url: URL) {
-      NotificationCenter.default.post(
-        name: .openFileInEditor,
-        object: url
-      )
+      NotificationCenter.default.post(name: .openFileInEditor, object: url)
     }
   }
 }

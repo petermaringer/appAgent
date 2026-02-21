@@ -54,19 +54,6 @@ struct FileRowView: View {
       .padding(.horizontal, 5)
       .background(Color(UIColor.systemBackground))
       .contentShape(Rectangle())
-      .onTapGesture {
-        guard renamingNode?.id != node.id else { return }
-        if node.isFolder {
-          withAnimation(.easeInOut(duration: 0.2)) {
-            node.isExpanded.toggle()
-            if node.isExpanded { node.reloadChildren() }
-          }
-        } else {
-          selectedFile = node
-        }
-      }
-      .onDrag { NSItemProvider(object: node.file as NSURL) }
-      .onDrop(of: ["public.file-url"], delegate: FileNodeDropDelegate(destination: node))
       .swipeActions(edge: .trailing, allowsFullSwipe: false) {
         Button("Löschen", role: .destructive) { deleteAction(node) }
         Button("Umbenennen") {
@@ -77,6 +64,17 @@ struct FileRowView: View {
               isRenamingFocused = true
             }
           }
+        }
+      }
+      .onTapGesture {
+        guard renamingNode?.id != node.id else { return }
+        if node.isFolder {
+          withAnimation(.easeInOut(duration: 0.2)) {
+            node.isExpanded.toggle()
+            if node.isExpanded { node.reloadChildren() }
+          }
+        } else {
+          selectedFile = node
         }
       }
 

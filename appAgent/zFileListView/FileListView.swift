@@ -87,7 +87,6 @@ struct FileListView: View {
   var renameAction: (FileNode) -> Void = { _ in }
   var deleteAction: (FileNode) -> Void = { _ in }
 
-  // Initializer, um ProjectDetailView unverändert zu lassen
   init(projectFolder: URL, renameAction: @escaping (FileNode) -> Void = { _ in }, deleteAction: @escaping (FileNode) -> Void = { _ in }) {
     self.rootFolder = projectFolder
     self.renameAction = renameAction

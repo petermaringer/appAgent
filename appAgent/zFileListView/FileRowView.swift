@@ -13,6 +13,7 @@ struct FileRowView: View {
 
   var body: some View {
     VStack(spacing: 0) {
+      // HStack für Swipe isoliert
       HStack(spacing: 10) {
         Image(systemName: node.isFolder ? "folder.fill" : "doc.text")
           .foregroundColor(node.isFolder ? .blue : .primary)
@@ -30,6 +31,7 @@ struct FileRowView: View {
             .animation(.easeInOut(duration: 0.2), value: node.isExpanded)
         }
 
+        // Rename Häkchen + TextField
         if renamingNode?.id == node.id {
           HStack(spacing: 5) {
             TextField("", text: $newName)
@@ -54,6 +56,7 @@ struct FileRowView: View {
       .padding(.horizontal, 5)
       .background(Color(UIColor.systemBackground))
       .contentShape(Rectangle())
+      // Swipe direkt auf HStack
       .swipeActions(edge: .trailing, allowsFullSwipe: false) {
         Button("Löschen", role: .destructive) { deleteAction(node) }
         Button("Umbenennen") {
@@ -66,6 +69,7 @@ struct FileRowView: View {
           }
         }
       }
+      // Tap nach Swipe
       .onTapGesture {
         guard renamingNode?.id != node.id else { return }
         if node.isFolder {
@@ -77,9 +81,12 @@ struct FileRowView: View {
           selectedFile = node
         }
       }
+      .onDrag { NSItemProvider(object: node.file as NSURL) }
+      .onDrop(of: ["public.file-url"], delegate: FileNodeDropDelegate(destination: node))
 
-      Divider() // Trennstrich wie bei OutlineGroup
+      Divider()
 
+      // Children, rekursiv
       if node.isFolder && node.isExpanded, let children = node.children {
         VStack(alignment: .leading, spacing: 0) {
           ForEach(children) { child in

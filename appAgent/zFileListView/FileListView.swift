@@ -86,11 +86,12 @@ struct FileListView: View {
   var renameAction: (FileNode) -> Void = { _ in }
   var deleteAction: (FileNode) -> Void = { _ in }
 
-  init(rootFolder: URL, renameAction: @escaping (FileNode) -> Void = { _ in }, deleteAction: @escaping (FileNode) -> Void = { _ in }) {
-    self.rootFolder = rootFolder
+  // Neuer Initializer, der ProjectDetailView unverändert lässt
+  init(projectFolder: URL, renameAction: @escaping (FileNode) -> Void = { _ in }, deleteAction: @escaping (FileNode) -> Void = { _ in }) {
+    self.rootFolder = projectFolder
     self.renameAction = renameAction
     self.deleteAction = deleteAction
-    _rootNodes = State(initialValue: [FileNode(file: rootFolder)])
+    _rootNodes = State(initialValue: [FileNode(file: projectFolder)])
   }
 
   private var visibleNodes: [FlatFileNode] {
@@ -124,4 +125,4 @@ struct FileListView: View {
     }
     .listStyle(.plain)
   }
-}
+}|

@@ -73,76 +73,89 @@ final class FileListViewController: UITableViewController {
   }
 
   override func tableView(_ tableView: UITableView,
-                        cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+                          cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 
-  let item = visibleNodes[indexPath.row]
-  let node = item.node
+    let item = visibleNodes[indexPath.row]
+    let node = item.node
 
-  let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+    let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
 
-  var content = cell.defaultContentConfiguration()
-  content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
-
-  // Standardtext nur anzeigen, wenn nicht umbenannt wird
-  if renamingIndexPath != indexPath {
+    var content = cell.defaultContentConfiguration()
     content.text = node.url.lastPathComponent
-  }
+    content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
+    cell.contentConfiguration = content
 
-  cell.contentConfiguration = content
+    cell.indentationLevel = item.depth
+    cell.indentationWidth = 20
 
-  cell.indentationLevel = item.depth
-  cell.indentationWidth = 20
-
-  // Pfeil als accessoryView
-  cell.accessoryView = nil
-  if node.isFolder {
-    let symbolName = node.isExpanded ? "chevron.down" : "chevron.right"
-    let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-    let image = UIImageView(image: UIImage(systemName: symbolName, withConfiguration: config))
-    cell.accessoryView = image
-  }
-
-  // Rename TextField anstelle des Textes, aber Icon bleibt
-  if renamingIndexPath == indexPath {
-    if let tf = renamingTextField {
-      tf.removeFromSuperview()
+    // Pfeile mit nativer Breite
+    cell.accessoryView = nil
+    if node.isFolder {
+      let symbolName = node.isExpanded ? "chevron.down" : "chevron.right"
+      let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+      let image = UIImage(systemName: symbolName, withConfiguration: config)
+      let arrow = UIImageView(image: image)
+      cell.accessoryView = arrow
     }
-    let tf = UITextField(frame: CGRect(x: 40, // rechts vom Icon (ca. 24 px Icon + Padding)
-                                       y: 0,
-                                       width: cell.bounds.width - 60, // Platz bis Pfeil
-                                       height: cell.bounds.height))
-    tf.text = node.url.lastPathComponent
-    tf.borderStyle = .roundedRect
-    tf.addTarget(self, action: #selector(renameCommit),
-                 for: .editingDidEndOnExit)
-    cell.contentView.addSubview(tf)
-    renamingTextField = tf
-    tf.becomeFirstResponder()
+
+    // Rename
+   if renamingIndexPath == indexPath {
+  // Textfeld entfernen, falls schon vorhanden
+  renamingTextField?.removeFromSuperview()
+  cell.contentView.subviews.forEach { sub in
+    if sub is UIButton { sub.removeFromSuperview() }
   }
 
-  return cell
+  // Textfeld
+  let tf = UITextField()
+  tf.text = node.url.lastPathComponent
+  tf.borderStyle = .roundedRect
+  tf.translatesAutoresizingMaskIntoConstraints = false
+  cell.contentView.addSubview(tf)
+  renamingTextField = tf
+  tf.becomeFirstResponder()
+
+  // Häkchen-Button
+  let check = UIButton(type: .system)
+  check.setTitle("✅", for: .normal)
+  check.translatesAutoresizingMaskIntoConstraints = false
+  cell.contentView.addSubview(check)
+  check.addAction(UIAction { _ in self.renameCommit() }, for: .touchUpInside)
+
+  // AutoLayout: Textfeld links, Häkchen rechts, Icon bleibt
+  NSLayoutConstraint.activate([
+    tf.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor, constant: 24),
+    tf.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+    tf.trailingAnchor.constraint(equalTo: check.leadingAnchor, constant: -8),
+    tf.heightAnchor.constraint(equalToConstant: 30),
+
+    check.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
+    check.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+    check.widthAnchor.constraint(equalToConstant: 30),
+    check.heightAnchor.constraint(equalToConstant: 30)
+  ])
 }
 
-  override func tableView(_ tableView: UITableView,
-                          didSelectRowAt indexPath: IndexPath) {
-
-    let node = visibleNodes[indexPath.row].node
-
-    if node.isFolder {
-
-      if node.children.isEmpty {
-        node.children = loadChildren(of: node.url)
-      }
-
-      node.isExpanded.toggle()
-      rebuildVisible()
-      tableView.reloadData()
-
-    } else {
-      // Datei ausgewählt → Callback
-      onFileSelected?(node.url)
-    }
+    return cell
   }
+
+ override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+  let node = visibleNodes[indexPath.row].node
+
+  // Rename-Modus, Datei → nichts tun
+  if renamingIndexPath == indexPath && !node.isFolder { return }
+
+  if node.isFolder {
+    if node.children.isEmpty {
+      node.children = loadChildren(of: node.url)
+    }
+    node.isExpanded.toggle()
+    rebuildVisible()
+    tableView.reloadData()
+  } else {
+    onFileSelected?(node.url)
+  }
+}
 
   override func tableView(_ tableView: UITableView,
                           trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath)
@@ -167,20 +180,20 @@ final class FileListViewController: UITableViewController {
     return UISwipeActionsConfiguration(actions: [delete, rename])
   }
 
-  @objc private func renameCommit() {
-    guard let indexPath = renamingIndexPath,
-          let tf = renamingTextField,
-          let text = tf.text
-    else { return }
+ @objc private func renameCommit() {
+  guard let indexPath = renamingIndexPath,
+        let tf = renamingTextField,
+        let text = tf.text
+  else { return }
 
-    let node = visibleNodes[indexPath.row].node
-    let newURL = node.url.deletingLastPathComponent().appendingPathComponent(text)
+  let node = visibleNodes[indexPath.row].node
+  let newURL = node.url.deletingLastPathComponent().appendingPathComponent(text)
 
-    try? FileManager.default.moveItem(at: node.url, to: newURL)
+  try? FileManager.default.moveItem(at: node.url, to: newURL)
 
-    renamingIndexPath = nil
-    loadFolder(rootNodes.first?.url.deletingLastPathComponent() ?? newURL)
-  }
+  renamingIndexPath = nil
+  loadFolder(rootNodes.first?.url.deletingLastPathComponent() ?? newURL)
+}
 }
 
 // MARK: - SwiftUI Bridge

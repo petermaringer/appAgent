@@ -7,6 +7,12 @@ struct ProjectDetailView: View {
   @State private var isProcessing: Bool = false
   @State private var statusMessage: String = ""
   
+  @AppStorage("githubToken") private var token: String = ""
+@AppStorage("githubOwner") private var owner: String = ""
+@AppStorage("githubRepo") private var repo: String = ""
+
+
+  
   // Neuer Wrapper für SwiftUI Sheet
   struct FileSheetItem: Identifiable {
     let id = UUID()
@@ -65,6 +71,19 @@ struct ProjectDetailView: View {
           }
         }
         .padding(.trailing)
+        
+       Button {
+  Task {
+    let gitService = GitHubService(token: token, repoOwner: owner, repoName: repo)
+    await gitService.pushProject(at: project.projectFolder) { status in
+      statusMessage = status
+    }
+  }
+} label: {
+  Text("GitHub Push").bold()
+}
+  .padding(.trailing)
+        
       }
       .padding(.horizontal)
       

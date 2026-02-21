@@ -7,7 +7,8 @@ struct ProjectDetailView: View {
   @State private var isProcessing: Bool = false
   @State private var statusMessage: String = ""
   
-  @State private var sheetFileURL: URL? = nil // für FileEditorView
+  @State private var sheetFileURL: URL? = nil
+  @State private var showingFileEditor: Bool = false
 
   let kiService = KIService()
   
@@ -77,6 +78,7 @@ struct ProjectDetailView: View {
         .onReceive(NotificationCenter.default.publisher(for: .openFileInEditor)) { notification in
           if let url = notification.object as? URL {
             sheetFileURL = url
+            showingFileEditor = true
           }
         }
     }
@@ -85,8 +87,10 @@ struct ProjectDetailView: View {
     .sheet(isPresented: $showingSettings) {
       SettingsView()
     }
-    .sheet(item: $sheetFileURL) { url in
-      FileEditorView(fileURL: url)
+    .sheet(isPresented: $showingFileEditor) {
+      if let url = sheetFileURL {
+        FileEditorView(fileURL: url)
+      }
     }
   }
   

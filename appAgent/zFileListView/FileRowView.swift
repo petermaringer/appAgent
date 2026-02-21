@@ -6,6 +6,7 @@ struct FileRowView: View {
   @Binding var targetFile: URL?
   @Binding var renamingNode: FileNode?
   @Binding var newName: String
+  @FocusState private var isRenamingFocused: Bool
 
   var renameAction: (FileNode) -> Void
   var deleteAction: (FileNode) -> Void
@@ -20,27 +21,27 @@ struct FileRowView: View {
       }
 
       ZStack(alignment: .leading) {
-        // Alte Bezeichnung, immer sichtbar
         Text(node.file.lastPathComponent)
           .foregroundColor(node.file == targetFile ? .yellow : (node.isFolder ? .blue : .primary))
 
-        // TextField + Häkchen nur sichtbar, wenn Rename aktiv
         if renamingNode?.id == node.id {
           HStack {
             TextField("", text: $newName)
               .textFieldStyle(.roundedBorder)
               .frame(maxWidth: 200)
+              .focused($isRenamingFocused)
 
             Button(action: {
               renameAction(node)
               renamingNode = nil
               selectedFile = nil
+              isRenamingFocused = false
             }) {
               Image(systemName: "checkmark.circle.fill")
                 .foregroundColor(.green)
             }
           }
-          .transition(.opacity) // sanft einblenden
+          .transition(.opacity)
         }
       }
 
@@ -53,6 +54,8 @@ struct FileRowView: View {
     }
     .contentShape(Rectangle())
     .onTapGesture {
+      guard renamingNode?.id != node.id else { return }
+
       if node.isFolder {
         if node.children == nil || node.children!.isEmpty {
           node.reloadChildren()
@@ -68,13 +71,16 @@ struct FileRowView: View {
     }
     .onDrop(of: ["public.file-url"], delegate: FileNodeDropDelegate(destination: node))
     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-     
-        Button("Löschen", role: .destructive) { deleteAction(node) }
-        Button("Umbenennen") {
+      Button("Löschen", role: .destructive) { deleteAction(node) }
+      Button("Umbenennen") {
+        withAnimation(.none) {
           renamingNode = node
           newName = node.file.lastPathComponent
+          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            isRenamingFocused = true
+          }
         }
-      
+      }
     }
   }
 }

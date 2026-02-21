@@ -26,6 +26,7 @@ final class FileListViewController: UITableViewController {
 
   private var renamingIndexPath: IndexPath?
   private var renamingTextField: UITextField?
+  private var renamingCheckButton: UIButton?
 
   // Callback für Datei-Tap
   var onFileSelected: ((URL) -> Void)?
@@ -79,6 +80,7 @@ final class FileListViewController: UITableViewController {
     let node = item.node
 
     let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+    cell.contentView.subviews.forEach { $0.removeFromSuperview() } // alte Subviews entfernen
 
     var content = cell.defaultContentConfiguration()
     content.text = node.url.lastPathComponent
@@ -98,64 +100,61 @@ final class FileListViewController: UITableViewController {
       cell.accessoryView = arrow
     }
 
-    // Rename
-   if renamingIndexPath == indexPath {
-  // Textfeld entfernen, falls schon vorhanden
-  renamingTextField?.removeFromSuperview()
-  cell.contentView.subviews.forEach { sub in
-    if sub is UIButton { sub.removeFromSuperview() }
-  }
+    // Rename-Modus
+    if renamingIndexPath == indexPath {
+      let tf = UITextField()
+      tf.text = node.url.lastPathComponent
+      tf.borderStyle = .roundedRect
+      tf.translatesAutoresizingMaskIntoConstraints = false
+      cell.contentView.addSubview(tf)
+      renamingTextField = tf
+      tf.becomeFirstResponder()
 
-  // Textfeld
-  let tf = UITextField()
-  tf.text = node.url.lastPathComponent
-  tf.borderStyle = .roundedRect
-  tf.translatesAutoresizingMaskIntoConstraints = false
-  cell.contentView.addSubview(tf)
-  renamingTextField = tf
-  tf.becomeFirstResponder()
+      let check = UIButton(type: .system)
+      check.setTitle("✅", for: .normal)
+      check.translatesAutoresizingMaskIntoConstraints = false
+      cell.contentView.addSubview(check)
+      renamingCheckButton = check
+      check.addAction(UIAction { [weak self] _ in
+        self?.renameCommit()
+      }, for: .touchUpInside)
 
-  // Häkchen-Button
-  let check = UIButton(type: .system)
-  check.setTitle("✅", for: .normal)
-  check.translatesAutoresizingMaskIntoConstraints = false
-  cell.contentView.addSubview(check)
-  check.addAction(UIAction { _ in self.renameCommit() }, for: .touchUpInside)
+      // AutoLayout: Textfeld links, Häkchen rechts, Icon unverändert
+      NSLayoutConstraint.activate([
+        tf.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor, constant: 24),
+        tf.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+        tf.trailingAnchor.constraint(equalTo: check.leadingAnchor, constant: -8),
+        tf.heightAnchor.constraint(equalToConstant: 30),
 
-  // AutoLayout: Textfeld links, Häkchen rechts, Icon bleibt
-  NSLayoutConstraint.activate([
-    tf.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor, constant: 24),
-    tf.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
-    tf.trailingAnchor.constraint(equalTo: check.leadingAnchor, constant: -8),
-    tf.heightAnchor.constraint(equalToConstant: 30),
-
-    check.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
-    check.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
-    check.widthAnchor.constraint(equalToConstant: 30),
-    check.heightAnchor.constraint(equalToConstant: 30)
-  ])
-}
+        check.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
+        check.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
+        check.widthAnchor.constraint(equalToConstant: 30),
+        check.heightAnchor.constraint(equalToConstant: 30)
+      ])
+    }
 
     return cell
   }
 
- override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-  let node = visibleNodes[indexPath.row].node
+  override func tableView(_ tableView: UITableView,
+                          didSelectRowAt indexPath: IndexPath) {
 
-  // Rename-Modus, Datei → nichts tun
-  if renamingIndexPath == indexPath && !node.isFolder { return }
+    let node = visibleNodes[indexPath.row].node
 
-  if node.isFolder {
-    if node.children.isEmpty {
-      node.children = loadChildren(of: node.url)
+    // Wenn Rename aktiv und Datei → nichts tun
+    if renamingIndexPath == indexPath && !node.isFolder { return }
+
+    if node.isFolder {
+      if node.children.isEmpty {
+        node.children = loadChildren(of: node.url)
+      }
+      node.isExpanded.toggle()
+      rebuildVisible()
+      tableView.reloadData()
+    } else {
+      onFileSelected?(node.url)
     }
-    node.isExpanded.toggle()
-    rebuildVisible()
-    tableView.reloadData()
-  } else {
-    onFileSelected?(node.url)
   }
-}
 
   override func tableView(_ tableView: UITableView,
                           trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath)
@@ -180,20 +179,23 @@ final class FileListViewController: UITableViewController {
     return UISwipeActionsConfiguration(actions: [delete, rename])
   }
 
- @objc private func renameCommit() {
-  guard let indexPath = renamingIndexPath,
-        let tf = renamingTextField,
-        let text = tf.text
-  else { return }
+  @objc private func renameCommit() {
+    guard let indexPath = renamingIndexPath,
+          let tf = renamingTextField,
+          let text = tf.text, !text.isEmpty
+    else { return }
 
-  let node = visibleNodes[indexPath.row].node
-  let newURL = node.url.deletingLastPathComponent().appendingPathComponent(text)
+    let node = visibleNodes[indexPath.row].node
+    let newURL = node.url.deletingLastPathComponent().appendingPathComponent(text)
 
-  try? FileManager.default.moveItem(at: node.url, to: newURL)
+    try? FileManager.default.moveItem(at: node.url, to: newURL)
 
-  renamingIndexPath = nil
-  loadFolder(rootNodes.first?.url.deletingLastPathComponent() ?? newURL)
-}
+    renamingIndexPath = nil
+    renamingTextField = nil
+    renamingCheckButton = nil
+
+    loadFolder(rootNodes.first?.url.deletingLastPathComponent() ?? newURL)
+  }
 }
 
 // MARK: - SwiftUI Bridge

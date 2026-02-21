@@ -1,8 +1,12 @@
 import UIKit
 import SwiftUI
 
-// MARK: - Model
+// MARK: - Notification für SwiftUI Sheet
+extension Notification.Name {
+  static let openFileInEditor = Notification.Name("openFileInEditor")
+}
 
+// MARK: - File Node
 final class FileNode {
   let url: URL
   var children: [FileNode] = []
@@ -15,7 +19,6 @@ final class FileNode {
 }
 
 // MARK: - UIKit Controller
-
 final class FileListViewController: UITableViewController {
 
   private var rootNodes: [FileNode] = []
@@ -23,6 +26,9 @@ final class FileListViewController: UITableViewController {
 
   private var renamingIndexPath: IndexPath?
   private var renamingTextField: UITextField?
+
+  // Callback für Datei-Tap
+  var onFileSelected: ((URL) -> Void)?
 
   func loadFolder(_ folder: URL) {
     rootNodes = loadChildren(of: folder)
@@ -72,8 +78,7 @@ final class FileListViewController: UITableViewController {
     let item = visibleNodes[indexPath.row]
     let node = item.node
 
-    let cell = tableView.dequeueReusableCell(withIdentifier: "cell",
-                                             for: indexPath)
+    let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
 
     var content = cell.defaultContentConfiguration()
     content.text = node.url.lastPathComponent
@@ -83,13 +88,17 @@ final class FileListViewController: UITableViewController {
     cell.indentationLevel = item.depth
     cell.indentationWidth = 20
 
+    // Pfeile mit nativer Breite
     cell.accessoryView = nil
     if node.isFolder {
-      let arrow = UIImageView(image: UIImage(systemName: "chevron.right"))
-      arrow.transform = node.isExpanded ? CGAffineTransform(rotationAngle: .pi/2) : .identity
+      let symbolName = node.isExpanded ? "chevron.down" : "chevron.right"
+      let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+      let image = UIImage(systemName: symbolName, withConfiguration: config)
+      let arrow = UIImageView(image: image)
       cell.accessoryView = arrow
     }
 
+    // Rename
     if renamingIndexPath == indexPath {
       let tf = UITextField(frame: CGRect(x: 0, y: 0, width: 200, height: 30))
       tf.text = node.url.lastPathComponent
@@ -109,15 +118,20 @@ final class FileListViewController: UITableViewController {
 
     let node = visibleNodes[indexPath.row].node
 
-    guard node.isFolder else { return }
+    if node.isFolder {
 
-    if node.children.isEmpty {
-      node.children = loadChildren(of: node.url)
+      if node.children.isEmpty {
+        node.children = loadChildren(of: node.url)
+      }
+
+      node.isExpanded.toggle()
+      rebuildVisible()
+      tableView.reloadData()
+
+    } else {
+      // Datei ausgewählt → Callback
+      onFileSelected?(node.url)
     }
-
-    node.isExpanded.toggle()
-    rebuildVisible()
-    tableView.reloadData()
   }
 
   override func tableView(_ tableView: UITableView,
@@ -160,18 +174,39 @@ final class FileListViewController: UITableViewController {
 }
 
 // MARK: - SwiftUI Bridge
-
 struct FileListView: UIViewControllerRepresentable {
 
   let projectFolder: URL
 
+  func makeCoordinator() -> Coordinator {
+    Coordinator(self)
+  }
+
   func makeUIViewController(context: Context) -> FileListViewController {
     let vc = FileListViewController()
     vc.loadFolder(projectFolder)
+    vc.onFileSelected = { url in
+      context.coordinator.openFile(url)
+    }
     return vc
   }
 
   func updateUIViewController(_ uiViewController: FileListViewController,
                               context: Context) {
+  }
+
+  class Coordinator {
+    let parent: FileListView
+
+    init(_ parent: FileListView) {
+      self.parent = parent
+    }
+
+    func openFile(_ url: URL) {
+      NotificationCenter.default.post(
+        name: .openFileInEditor,
+        object: url
+      )
+    }
   }
 }

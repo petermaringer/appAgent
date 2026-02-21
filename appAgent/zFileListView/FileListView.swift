@@ -16,7 +16,7 @@ struct FileRowView: View {
   var deleteAction: (FileNode) -> Void
 
   var body: some View {
-    HStack {
+    HStack(spacing: 10) {
       Image(systemName: node.isFolder ? "folder.fill" : "doc.text")
         .foregroundColor(node.isFolder ? .blue : .primary)
 
@@ -40,9 +40,9 @@ struct FileRowView: View {
             .focused($isRenamingFocused)
 
           Button(action: {
-            renameAction(node)
             renamingNode = nil
             isRenamingFocused = false
+            renameAction(node)
           }) {
             Image(systemName: "checkmark.circle.fill")
               .foregroundColor(.green)
@@ -59,7 +59,9 @@ struct FileRowView: View {
       if node.isFolder {
         withAnimation(.easeInOut(duration: 0.2)) {
           node.isExpanded.toggle()
-          if node.isExpanded { node.reloadChildren() }
+          if node.isExpanded && (node.children == nil || node.children!.isEmpty) {
+            node.reloadChildren()
+          }
         }
       }
     }
@@ -75,7 +77,6 @@ struct FileRowView: View {
         }
       }
     }
-  }
 }
 
 struct FileListView: View {
@@ -86,14 +87,16 @@ struct FileListView: View {
   var renameAction: (FileNode) -> Void = { _ in }
   var deleteAction: (FileNode) -> Void = { _ in }
 
-  // Neuer Initializer, der ProjectDetailView unverändert lässt
+  // Initializer, um ProjectDetailView unverändert zu lassen
   init(projectFolder: URL, renameAction: @escaping (FileNode) -> Void = { _ in }, deleteAction: @escaping (FileNode) -> Void = { _ in }) {
     self.rootFolder = projectFolder
     self.renameAction = renameAction
     self.deleteAction = deleteAction
+
+    // Root-Ordner selbst nicht anzeigen, nur Kinder als rootNodes
     let rootNode = FileNode(file: projectFolder)
-rootNode.reloadChildren()
-_rootNodes = State(initialValue: rootNode.children ?? [])
+    rootNode.reloadChildren()
+    _rootNodes = State(initialValue: rootNode.children ?? [])
   }
 
   private var visibleNodes: [FlatFileNode] {
@@ -112,17 +115,15 @@ _rootNodes = State(initialValue: rootNode.children ?? [])
   var body: some View {
     List {
       ForEach(visibleNodes) { flatNode in
-        VStack(spacing: 0) {
-          FileRowView(
-            node: flatNode.node,
-            depth: flatNode.depth,
-            renamingNode: $renamingNode,
-            newName: $newName,
-            renameAction: renameAction,
-            deleteAction: deleteAction
-          )
-          Divider()
-        }
+        FileRowView(
+          node: flatNode.node,
+          depth: flatNode.depth,
+          renamingNode: $renamingNode,
+          newName: $newName,
+          renameAction: renameAction,
+          deleteAction: deleteAction
+        )
+        Divider()
       }
     }
     .listStyle(.plain)

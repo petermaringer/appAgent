@@ -1,27 +1,31 @@
 import UIKit
 import SwiftUI
 
+// MARK: - Notification für SwiftUI Sheet
 extension Notification.Name {
   static let openFileInEditor = Notification.Name("openFileInEditor")
 }
 
+// MARK: - File Node
 final class FileNode {
-  let url: URL
+  var url: URL
   var children: [FileNode] = []
   var isExpanded = false
   var isFolder: Bool { url.hasDirectoryPath }
+  var isRenaming = false   // Rename-Status direkt im Node
 
   init(url: URL) { self.url = url }
 }
 
+// MARK: - UIKit Controller
 final class FileListViewController: UITableViewController {
 
   private var rootNodes: [FileNode] = []
   private var visibleNodes: [(node: FileNode, depth: Int)] = []
 
-  private var renamingIndexPath: IndexPath?
   private var renamingTextField: UITextField?
 
+  // Callback für Datei-Tap
   var onFileSelected: ((URL) -> Void)?
 
   func loadFolder(_ folder: URL) {
@@ -34,6 +38,7 @@ final class FileListViewController: UITableViewController {
     let fm = FileManager.default
     guard let urls = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
     else { return [] }
+
     return urls
       .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
       .map { FileNode(url: $0) }
@@ -66,68 +71,59 @@ final class FileListViewController: UITableViewController {
 
     let item = visibleNodes[indexPath.row]
     let node = item.node
-    let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
 
+    let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
     cell.indentationLevel = item.depth
     cell.indentationWidth = 20
+    cell.accessoryView = nil
 
-    // Icon
-    var content = cell.defaultContentConfiguration()
-    content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
-    
-    // Wenn Rename läuft für diese Zeile, nur Textfeld + Häkchen
-    if renamingIndexPath == indexPath {
-      let tf = UITextField()
+    // Icon + Text oder TextField+Häkchen
+    if node.isRenaming && !node.isFolder {
+
+      let tf = UITextField(frame: CGRect(x: 0, y: 0, width: 200, height: 30))
       tf.text = node.url.lastPathComponent
       tf.borderStyle = .roundedRect
-      tf.translatesAutoresizingMaskIntoConstraints = false
-      tf.addTarget(self, action: #selector(renameCommitWithCheck), for: .editingDidEndOnExit)
+      tf.returnKeyType = .done
+      tf.addTarget(self, action: #selector(renameCommitTextField(_:)), for: .editingDidEndOnExit)
       renamingTextField = tf
 
-      let checkButton = UIButton(type: .system)
-      checkButton.setTitle("✔︎", for: .normal)
-      checkButton.addTarget(self, action: #selector(renameCommitWithCheck), for: .touchUpInside)
-      checkButton.translatesAutoresizingMaskIntoConstraints = false
+      let check = UIButton(type: .system)
+      check.setTitle("✅", for: .normal)
+      check.addAction(UIAction { _ in
+        self.renameCommitButton(for: node)
+      }, for: .touchUpInside)
 
-      let stack = UIStackView(arrangedSubviews: [tf, checkButton])
+      let stack = UIStackView(arrangedSubviews: [tf, check])
       stack.axis = .horizontal
-      stack.spacing = 6
-      stack.alignment = .center
-      stack.translatesAutoresizingMaskIntoConstraints = false
+      stack.spacing = 8
+      cell.accessoryView = stack
 
-      cell.contentView.subviews.forEach { $0.removeFromSuperview() }
-      cell.contentView.addSubview(stack)
-      NSLayoutConstraint.activate([
-        stack.leadingAnchor.constraint(equalTo: cell.contentView.leadingAnchor, constant: 16),
-        stack.trailingAnchor.constraint(lessThanOrEqualTo: cell.contentView.trailingAnchor, constant: -16),
-        stack.centerYAnchor.constraint(equalTo: cell.contentView.centerYAnchor),
-        tf.widthAnchor.constraint(equalToConstant: 200)
-      ])
-      tf.becomeFirstResponder()
-      cell.accessoryView = nil
-      content.text = nil
     } else {
+      var content = cell.defaultContentConfiguration()
       content.text = node.url.lastPathComponent
-      cell.accessoryView = nil
-      // Pfeil für Folder
+      content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
+      cell.contentConfiguration = content
+
       if node.isFolder {
         let symbolName = node.isExpanded ? "chevron.down" : "chevron.right"
         let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
         let image = UIImage(systemName: symbolName, withConfiguration: config)
-        cell.accessoryView = UIImageView(image: image)
+        let arrow = UIImageView(image: image)
+        cell.accessoryView = arrow
       }
     }
 
-    cell.contentConfiguration = content
     return cell
   }
 
   override func tableView(_ tableView: UITableView,
                           didSelectRowAt indexPath: IndexPath) {
-    // Beim Rename-Modus nicht öffnen
-    if renamingIndexPath == indexPath { return }
 
     let node = visibleNodes[indexPath.row].node
+
+    // Wenn Rename aktiv, nichts tun
+    if node.isRenaming { return }
+
     if node.isFolder {
       if node.children.isEmpty { node.children = loadChildren(of: node.url) }
       node.isExpanded.toggle()
@@ -144,14 +140,15 @@ final class FileListViewController: UITableViewController {
 
     let node = visibleNodes[indexPath.row].node
 
-    let delete = UIContextualAction(style: .destructive, title: "Löschen") { _, _, completion in
+    let delete = UIContextualAction(style: .destructive,
+                                     title: "Löschen") { _, _, completion in
       try? FileManager.default.removeItem(at: node.url)
       self.loadFolder(self.rootNodes.first?.url.deletingLastPathComponent() ?? node.url)
       completion(true)
     }
 
     let rename = UIContextualAction(style: .normal, title: "Umbenennen") { _, _, completion in
-      self.renamingIndexPath = indexPath
+      node.isRenaming = true
       self.tableView.reloadRows(at: [indexPath], with: .none)
       completion(true)
     }
@@ -159,42 +156,26 @@ final class FileListViewController: UITableViewController {
     return UISwipeActionsConfiguration(actions: [delete, rename])
   }
 
-  @objc private func renameCommitWithCheck() {
-    guard let indexPath = renamingIndexPath,
-          let tf = renamingTextField,
-          let text = tf.text,
-          !text.isEmpty
-    else { return }
+  @objc private func renameCommitTextField(_ tf: UITextField) {
+    guard let indexPath = visibleNodes.firstIndex(where: { $0.node.isRenaming }),
+          let text = tf.text else { return }
+    let node = visibleNodes[indexPath].node
+    commitRename(node, newName: text)
+  }
 
-    let node = visibleNodes[indexPath.row].node
-    let newURL = node.url.deletingLastPathComponent().appendingPathComponent(text)
+  private func renameCommitButton(for node: FileNode) {
+    guard let text = renamingTextField?.text else { return }
+    commitRename(node, newName: text)
+  }
+
+  private func commitRename(_ node: FileNode, newName: String) {
+    let newURL = node.url.deletingLastPathComponent().appendingPathComponent(newName)
     try? FileManager.default.moveItem(at: node.url, to: newURL)
+    node.url = newURL
+    node.isRenaming = false
 
-    renamingIndexPath = nil
-    renamingTextField = nil
-    loadFolder(rootNodes.first?.url.deletingLastPathComponent() ?? newURL)
-  }
-}
-
-struct FileListView: UIViewControllerRepresentable {
-  let projectFolder: URL
-
-  func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-  func makeUIViewController(context: Context) -> FileListViewController {
-    let vc = FileListViewController()
-    vc.loadFolder(projectFolder)
-    vc.onFileSelected = { url in context.coordinator.openFile(url) }
-    return vc
-  }
-
-  func updateUIViewController(_ uiViewController: FileListViewController, context: Context) {}
-
-  class Coordinator {
-    let parent: FileListView
-    init(_ parent: FileListView) { self.parent = parent }
-    func openFile(_ url: URL) {
-      NotificationCenter.default.post(name: .openFileInEditor, object: url)
+    if let row = visibleNodes.firstIndex(where: { $0.node === node }) {
+      tableView.reloadRows(at: [IndexPath(row: row, section: 0)], with: .none)
     }
   }
 }

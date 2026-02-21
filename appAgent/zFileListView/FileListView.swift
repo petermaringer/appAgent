@@ -79,11 +79,19 @@ struct FileRowView: View {
 }
 
 struct FileListView: View {
-  @State var rootNodes: [FileNode]
+  let rootFolder: URL
+  @State private var rootNodes: [FileNode] = []
   @State private var renamingNode: FileNode? = nil
   @State private var newName: String = ""
   var renameAction: (FileNode) -> Void = { _ in }
   var deleteAction: (FileNode) -> Void = { _ in }
+
+  init(rootFolder: URL, renameAction: @escaping (FileNode) -> Void = { _ in }, deleteAction: @escaping (FileNode) -> Void = { _ in }) {
+    self.rootFolder = rootFolder
+    self.renameAction = renameAction
+    self.deleteAction = deleteAction
+    _rootNodes = State(initialValue: [FileNode(file: rootFolder)])
+  }
 
   private var visibleNodes: [FlatFileNode] {
     func flatten(nodes: [FileNode], depth: Int) -> [FlatFileNode] {
@@ -95,7 +103,7 @@ struct FileListView: View {
         return result
       }
     }
-    flatten(nodes: rootNodes, depth: 0)
+    return flatten(nodes: rootNodes, depth: 0)
   }
 
   var body: some View {

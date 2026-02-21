@@ -19,13 +19,29 @@ struct FileRowView: View {
         Image(systemName: "doc.text")
       }
 
-      if renamingNode?.id == node.id {
-        TextField("", text: $newName, onCommit: { renameAction(node) })
-          .textFieldStyle(.roundedBorder)
-          .frame(maxWidth: 200)
-      } else {
+      ZStack(alignment: .leading) {
+        // Alte Bezeichnung, immer sichtbar
         Text(node.file.lastPathComponent)
           .foregroundColor(node.file == targetFile ? .yellow : (node.isFolder ? .blue : .primary))
+
+        // TextField + Häkchen nur sichtbar, wenn Rename aktiv
+        if renamingNode?.id == node.id {
+          HStack {
+            TextField("", text: $newName)
+              .textFieldStyle(.roundedBorder)
+              .frame(maxWidth: 200)
+
+            Button(action: {
+              renameAction(node)
+              renamingNode = nil
+              selectedFile = nil
+            }) {
+              Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.green)
+            }
+          }
+          .transition(.opacity) // sanft einblenden
+        }
       }
 
       Spacer()
@@ -38,7 +54,11 @@ struct FileRowView: View {
     .contentShape(Rectangle())
     .onTapGesture {
       if node.isFolder {
-        node.reloadChildren()
+        if node.children == nil || node.children!.isEmpty {
+          node.reloadChildren()
+        } else {
+          node.children = nil
+        }
       } else {
         selectedFile = node
       }
@@ -48,13 +68,13 @@ struct FileRowView: View {
     }
     .onDrop(of: ["public.file-url"], delegate: FileNodeDropDelegate(destination: node))
     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-      if !node.isFolder {
+     
         Button("Löschen", role: .destructive) { deleteAction(node) }
         Button("Umbenennen") {
           renamingNode = node
           newName = node.file.lastPathComponent
         }
-      }
+      
     }
   }
 }

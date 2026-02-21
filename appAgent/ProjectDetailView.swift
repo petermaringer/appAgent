@@ -7,8 +7,12 @@ struct ProjectDetailView: View {
   @State private var isProcessing: Bool = false
   @State private var statusMessage: String = ""
   
-  @State private var sheetFileURL: URL? = nil
-  @State private var showingFileEditor: Bool = false
+  // Neuer Wrapper für SwiftUI Sheet
+  struct FileSheetItem: Identifiable {
+    let id = UUID()
+    let url: URL
+  }
+  @State private var sheetItem: FileSheetItem? = nil
 
   let kiService = KIService()
   
@@ -77,8 +81,7 @@ struct ProjectDetailView: View {
         .padding(.horizontal)
         .onReceive(NotificationCenter.default.publisher(for: .openFileInEditor)) { notification in
           if let url = notification.object as? URL {
-            sheetFileURL = url
-            showingFileEditor = true
+            sheetItem = FileSheetItem(url: url)
           }
         }
     }
@@ -87,10 +90,8 @@ struct ProjectDetailView: View {
     .sheet(isPresented: $showingSettings) {
       SettingsView()
     }
-    .sheet(isPresented: $showingFileEditor) {
-      if let url = sheetFileURL {
-        FileEditorView(fileURL: url)
-      }
+    .sheet(item: $sheetItem) { item in
+      FileEditorView(fileURL: item.url)
     }
   }
   

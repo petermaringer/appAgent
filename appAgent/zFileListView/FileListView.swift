@@ -73,45 +73,55 @@ final class FileListViewController: UITableViewController {
   }
 
   override func tableView(_ tableView: UITableView,
-                          cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+                        cellForRowAt indexPath: IndexPath) -> UITableViewCell {
 
-    let item = visibleNodes[indexPath.row]
-    let node = item.node
+  let item = visibleNodes[indexPath.row]
+  let node = item.node
 
-    let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+  let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
 
-    var content = cell.defaultContentConfiguration()
+  var content = cell.defaultContentConfiguration()
+  content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
+
+  // Standardtext nur anzeigen, wenn nicht umbenannt wird
+  if renamingIndexPath != indexPath {
     content.text = node.url.lastPathComponent
-    content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
-    cell.contentConfiguration = content
-
-    cell.indentationLevel = item.depth
-    cell.indentationWidth = 20
-
-    // Pfeile mit nativer Breite
-    cell.accessoryView = nil
-    if node.isFolder {
-      let symbolName = node.isExpanded ? "chevron.down" : "chevron.right"
-      let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-      let image = UIImage(systemName: symbolName, withConfiguration: config)
-      let arrow = UIImageView(image: image)
-      cell.accessoryView = arrow
-    }
-
-    // Rename
-    if renamingIndexPath == indexPath {
-      let tf = UITextField(frame: CGRect(x: 0, y: 0, width: 200, height: 30))
-      tf.text = node.url.lastPathComponent
-      tf.borderStyle = .roundedRect
-      tf.addTarget(self, action: #selector(renameCommit),
-                   for: .editingDidEndOnExit)
-      cell.accessoryView = tf
-      renamingTextField = tf
-      tf.becomeFirstResponder()
-    }
-
-    return cell
   }
+
+  cell.contentConfiguration = content
+
+  cell.indentationLevel = item.depth
+  cell.indentationWidth = 20
+
+  // Pfeil als accessoryView
+  cell.accessoryView = nil
+  if node.isFolder {
+    let symbolName = node.isExpanded ? "chevron.down" : "chevron.right"
+    let config = UIImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+    let image = UIImageView(image: UIImage(systemName: symbolName, withConfiguration: config))
+    cell.accessoryView = image
+  }
+
+  // Rename TextField anstelle des Textes, aber Icon bleibt
+  if renamingIndexPath == indexPath {
+    if let tf = renamingTextField {
+      tf.removeFromSuperview()
+    }
+    let tf = UITextField(frame: CGRect(x: 40, // rechts vom Icon (ca. 24 px Icon + Padding)
+                                       y: 0,
+                                       width: cell.bounds.width - 60, // Platz bis Pfeil
+                                       height: cell.bounds.height))
+    tf.text = node.url.lastPathComponent
+    tf.borderStyle = .roundedRect
+    tf.addTarget(self, action: #selector(renameCommit),
+                 for: .editingDidEndOnExit)
+    cell.contentView.addSubview(tf)
+    renamingTextField = tf
+    tf.becomeFirstResponder()
+  }
+
+  return cell
+}
 
   override func tableView(_ tableView: UITableView,
                           didSelectRowAt indexPath: IndexPath) {

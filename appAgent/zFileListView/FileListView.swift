@@ -47,10 +47,10 @@ struct FileRowView: View {
             Image(systemName: "checkmark.circle.fill")
               .foregroundColor(.green)
           }
-        }
+        } // Ende HStack Rename
         .transition(.opacity)
       }
-    }
+    } // Ende HStack Haupt
     .padding(.leading, CGFloat(depth) * 20)
     .padding(.vertical, 5)
     .contentShape(Rectangle())
@@ -77,7 +77,8 @@ struct FileRowView: View {
         }
       }
     }
-}
+  } // <-- Body FileRowView geschlossen
+} // <-- FileRowView komplett geschlossen
 
 struct FileListView: View {
   let rootFolder: URL
@@ -92,7 +93,6 @@ struct FileListView: View {
     self.renameAction = renameAction
     self.deleteAction = deleteAction
 
-    // Root-Ordner selbst nicht anzeigen, nur Kinder als rootNodes
     let rootNode = FileNode(file: projectFolder)
     rootNode.reloadChildren()
     _rootNodes = State(initialValue: rootNode.children ?? [])
@@ -127,4 +127,4 @@ struct FileListView: View {
     }
     .listStyle(.plain)
   }
-}
+} // <-- FileListView komplett geschlossen

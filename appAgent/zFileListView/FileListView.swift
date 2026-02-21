@@ -91,7 +91,9 @@ struct FileListView: View {
     self.rootFolder = projectFolder
     self.renameAction = renameAction
     self.deleteAction = deleteAction
-    _rootNodes = State(initialValue: [FileNode(file: projectFolder)])
+    let rootNode = FileNode(file: projectFolder)
+rootNode.reloadChildren()
+_rootNodes = State(initialValue: rootNode.children ?? [])
   }
 
   private var visibleNodes: [FlatFileNode] {

@@ -179,3 +179,41 @@ final class FileListViewController: UITableViewController {
     }
   }
 }
+
+import SwiftUI
+
+struct FileListView: UIViewControllerRepresentable {
+
+  let projectFolder: URL
+
+  func makeCoordinator() -> Coordinator {
+    Coordinator(self)
+  }
+
+  func makeUIViewController(context: Context) -> FileListViewController {
+    let vc = FileListViewController()
+    vc.loadFolder(projectFolder)
+    vc.onFileSelected = { url in
+      context.coordinator.openFile(url)
+    }
+    return vc
+  }
+
+  func updateUIViewController(_ uiViewController: FileListViewController,
+                              context: Context) { }
+
+  class Coordinator {
+    let parent: FileListView
+
+    init(_ parent: FileListView) {
+      self.parent = parent
+    }
+
+    func openFile(_ url: URL) {
+      NotificationCenter.default.post(
+        name: .openFileInEditor,
+        object: url
+      )
+    }
+  }
+}

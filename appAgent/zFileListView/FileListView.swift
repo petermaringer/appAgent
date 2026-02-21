@@ -1,130 +1,177 @@
+import UIKit
 import SwiftUI
 
-struct FlatFileNode: Identifiable {
-  let node: FileNode
-  let depth: Int
-  var id: UUID { node.id }
+// MARK: - Model
+
+final class FileNode {
+  let url: URL
+  var children: [FileNode] = []
+  var isExpanded = false
+  var isFolder: Bool { url.hasDirectoryPath }
+
+  init(url: URL) {
+    self.url = url
+  }
 }
 
-struct FileRowView: View {
-  @ObservedObject var node: FileNode
-  let depth: Int
-  @Binding var renamingNode: FileNode?
-  @Binding var newName: String
-  @FocusState private var isRenamingFocused: Bool
-  var renameAction: (FileNode) -> Void
-  var deleteAction: (FileNode) -> Void
+// MARK: - UIKit Controller
 
-  var body: some View {
-    HStack(spacing: 10) {
-      Image(systemName: node.isFolder ? "folder.fill" : "doc.text")
-        .foregroundColor(node.isFolder ? .blue : .primary)
+final class FileListViewController: UITableViewController {
 
-      Text(node.file.lastPathComponent)
-        .lineLimit(1)
+  private var rootNodes: [FileNode] = []
+  private var visibleNodes: [(node: FileNode, depth: Int)] = []
 
-      Spacer()
+  private var renamingIndexPath: IndexPath?
+  private var renamingTextField: UITextField?
 
-      if node.isFolder {
-        Image(systemName: "chevron.right")
-          .rotationEffect(.degrees(node.isExpanded ? 90 : 0))
-          .foregroundColor(.gray)
-          .animation(.easeInOut(duration: 0.2), value: node.isExpanded)
-      }
-
-      if renamingNode?.id == node.id {
-        HStack(spacing: 5) {
-          TextField("", text: $newName)
-            .textFieldStyle(.roundedBorder)
-            .frame(maxWidth: 200)
-            .focused($isRenamingFocused)
-
-          Button(action: {
-            renamingNode = nil
-            isRenamingFocused = false
-            renameAction(node)
-          }) {
-            Image(systemName: "checkmark.circle.fill")
-              .foregroundColor(.green)
-          }
-        } // Ende HStack Rename
-        .transition(.opacity)
-      }
-    } // Ende HStack Haupt
-    .padding(.leading, CGFloat(depth) * 20)
-    .padding(.vertical, 5)
-    .contentShape(Rectangle())
-    .onTapGesture {
-      guard renamingNode?.id != node.id else { return }
-      if node.isFolder {
-        withAnimation(.easeInOut(duration: 0.2)) {
-          node.isExpanded.toggle()
-          if node.isExpanded && (node.children == nil || node.children!.isEmpty) {
-            node.reloadChildren()
-          }
-        }
-      }
-    }
-    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-      Button("Löschen", role: .destructive) { deleteAction(node) }
-      Button("Umbenennen") {
-        withAnimation(.none) {
-          renamingNode = node
-          newName = node.file.lastPathComponent
-          DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            isRenamingFocused = true
-          }
-        }
-      }
-    }
-  } // <-- Body FileRowView geschlossen
-} // <-- FileRowView komplett geschlossen
-
-struct FileListView: View {
-  let rootFolder: URL
-  @State private var rootNodes: [FileNode] = []
-  @State private var renamingNode: FileNode? = nil
-  @State private var newName: String = ""
-  var renameAction: (FileNode) -> Void = { _ in }
-  var deleteAction: (FileNode) -> Void = { _ in }
-
-  init(projectFolder: URL, renameAction: @escaping (FileNode) -> Void = { _ in }, deleteAction: @escaping (FileNode) -> Void = { _ in }) {
-    self.rootFolder = projectFolder
-    self.renameAction = renameAction
-    self.deleteAction = deleteAction
-
-    let rootNode = FileNode(file: projectFolder)
-    rootNode.reloadChildren()
-    _rootNodes = State(initialValue: rootNode.children ?? [])
+  func loadFolder(_ folder: URL) {
+    rootNodes = loadChildren(of: folder)
+    rebuildVisible()
+    tableView.reloadData()
   }
 
-  private var visibleNodes: [FlatFileNode] {
-    func flatten(nodes: [FileNode], depth: Int) -> [FlatFileNode] {
-      nodes.flatMap { node in
-        var result = [FlatFileNode(node: node, depth: depth)]
-        if node.isExpanded, let children = node.children {
-          result += flatten(nodes: children, depth: depth + 1)
-        }
-        return result
-      }
-    }
-    return flatten(nodes: rootNodes, depth: 0)
+  private func loadChildren(of folder: URL) -> [FileNode] {
+    let fm = FileManager.default
+    guard let urls = try? fm.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+    else { return [] }
+
+    return urls
+      .sorted { $0.lastPathComponent.lowercased() < $1.lastPathComponent.lowercased() }
+      .map { FileNode(url: $0) }
   }
 
-  var body: some View {
-    List {
-      ForEach(visibleNodes) { flatNode in
-        FileRowView(
-          node: flatNode.node,
-          depth: flatNode.depth,
-          renamingNode: $renamingNode,
-          newName: $newName,
-          renameAction: renameAction,
-          deleteAction: deleteAction
-        )
-        Divider()
+  private func rebuildVisible() {
+    visibleNodes.removeAll()
+    for node in rootNodes {
+      append(node, depth: 0)
+    }
+  }
+
+  private func append(_ node: FileNode, depth: Int) {
+    visibleNodes.append((node, depth))
+    if node.isExpanded {
+      for child in node.children {
+        append(child, depth: depth + 1)
       }
     }
-    .listStyle(.plain)
   }
-} // <-- FileListView komplett geschlossen
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+  }
+
+  override func tableView(_ tableView: UITableView,
+                          numberOfRowsInSection section: Int) -> Int {
+    visibleNodes.count
+  }
+
+  override func tableView(_ tableView: UITableView,
+                          cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+
+    let item = visibleNodes[indexPath.row]
+    let node = item.node
+
+    let cell = tableView.dequeueReusableCell(withIdentifier: "cell",
+                                             for: indexPath)
+
+    var content = cell.defaultContentConfiguration()
+    content.text = node.url.lastPathComponent
+    content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")
+    cell.contentConfiguration = content
+
+    cell.indentationLevel = item.depth
+    cell.indentationWidth = 20
+
+    cell.accessoryView = nil
+    if node.isFolder {
+      let arrow = UIImageView(image: UIImage(systemName: "chevron.right"))
+      arrow.transform = node.isExpanded ? CGAffineTransform(rotationAngle: .pi/2) : .identity
+      cell.accessoryView = arrow
+    }
+
+    if renamingIndexPath == indexPath {
+      let tf = UITextField(frame: CGRect(x: 0, y: 0, width: 200, height: 30))
+      tf.text = node.url.lastPathComponent
+      tf.borderStyle = .roundedRect
+      tf.addTarget(self, action: #selector(renameCommit),
+                   for: .editingDidEndOnExit)
+      cell.accessoryView = tf
+      renamingTextField = tf
+      tf.becomeFirstResponder()
+    }
+
+    return cell
+  }
+
+  override func tableView(_ tableView: UITableView,
+                          didSelectRowAt indexPath: IndexPath) {
+
+    let node = visibleNodes[indexPath.row].node
+
+    guard node.isFolder else { return }
+
+    if node.children.isEmpty {
+      node.children = loadChildren(of: node.url)
+    }
+
+    node.isExpanded.toggle()
+    rebuildVisible()
+    tableView.reloadData()
+  }
+
+  override func tableView(_ tableView: UITableView,
+                          trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath)
+  -> UISwipeActionsConfiguration? {
+
+    let node = visibleNodes[indexPath.row].node
+
+    let delete = UIContextualAction(style: .destructive,
+                                     title: "Löschen") { _, _, completion in
+      try? FileManager.default.removeItem(at: node.url)
+      self.loadFolder(self.rootNodes.first?.url.deletingLastPathComponent() ?? node.url)
+      completion(true)
+    }
+
+    let rename = UIContextualAction(style: .normal,
+                                     title: "Umbenennen") { _, _, completion in
+      self.renamingIndexPath = indexPath
+      self.tableView.reloadRows(at: [indexPath], with: .none)
+      completion(true)
+    }
+
+    return UISwipeActionsConfiguration(actions: [delete, rename])
+  }
+
+  @objc private func renameCommit() {
+    guard let indexPath = renamingIndexPath,
+          let tf = renamingTextField,
+          let text = tf.text
+    else { return }
+
+    let node = visibleNodes[indexPath.row].node
+    let newURL = node.url.deletingLastPathComponent().appendingPathComponent(text)
+
+    try? FileManager.default.moveItem(at: node.url, to: newURL)
+
+    renamingIndexPath = nil
+    loadFolder(rootNodes.first?.url.deletingLastPathComponent() ?? newURL)
+  }
+}
+
+// MARK: - SwiftUI Bridge
+
+struct FileListView: UIViewControllerRepresentable {
+
+  let projectFolder: URL
+
+  func makeUIViewController(context: Context) -> FileListViewController {
+    let vc = FileListViewController()
+    vc.loadFolder(projectFolder)
+    return vc
+  }
+
+  func updateUIViewController(_ uiViewController: FileListViewController,
+                              context: Context) {
+  }
+}

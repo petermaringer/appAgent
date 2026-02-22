@@ -122,5 +122,6 @@ struct NewProjectView: View {
     let engine = ProjectEngine(projectFolder: newFolder)
     projects.append(engine)
     onCreated(engine)
+    dismiss()
   }
 }

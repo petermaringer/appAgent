@@ -6,11 +6,11 @@ struct ContentView: View {
   @State private var navigationPath = NavigationPath()
 
   var body: some View {
-    NavigationStack {
+    NavigationStack(path: $navigationPath) {
       VStack(spacing: 0) {
         List {
           ForEach(projects) { project in
-            NavigationLink(destination: ProjectDetailView(project: project)) {
+            NavigationLink(value: project) {
               Text(project.projectName)
                 .font(.body)
                 .frame(height: 36, alignment: .leading)
@@ -48,6 +48,14 @@ struct ContentView: View {
     .sheet(isPresented: $showingNewProjectSheet) {
       NewProjectView(projects: $projects) { newProject in
         showingNewProjectSheet = false
+        projects.append(newProject)
+        // Direkt sortieren, damit Neuestes oben steht
+        projects.sort {
+          let date1 = (try? $0.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
+          let date2 = (try? $1.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
+          return date1 > date2
+        }
+        // Direkt zur Detailview springen
         navigationPath.append(newProject)
       }
     }

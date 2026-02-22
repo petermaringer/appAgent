@@ -9,7 +9,7 @@ struct ContentView: View {
     NavigationStack {
       VStack(spacing: 0) {
         NavigationLink(
-          destination: selectedProject.map { ProjectDetailView(project: $0) },
+          destination: Group { if let project = selectedProject { ProjectDetailView(project: project) } },
           isActive: Binding(
             get: { selectedProject != nil },
             set: { if !$0 { selectedProject = nil } }
@@ -50,9 +50,6 @@ struct ContentView: View {
       }
       .background(Color(.systemBackground).ignoresSafeArea())
       .navigationTitle("App-Generator")
-      .navigationDestination(item: $selectedProject) { project in
-        ProjectDetailView(project: project)
-      }
     }
     .sheet(isPresented: $showingNewProjectSheet) {
       NewProjectView(projects: $projects) { newProject in

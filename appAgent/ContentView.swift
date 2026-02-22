@@ -30,6 +30,13 @@ struct ContentView: View {
             }
           }
           .listStyle(.plain)
+          .onChange(of: projects) { _ in
+            if let firstProject = projects.first {
+              DispatchQueue.main.async {
+                scrollProxy.scrollTo(firstProject.id, anchor: .top)
+              }
+            }
+          }
         }
 
         Button("Neues Projekt") {
@@ -57,9 +64,6 @@ struct ContentView: View {
           let date1 = (try? $0.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
           let date2 = (try? $1.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
           return date1 > date2
-        }
-        DispatchQueue.main.async {
-          scrollProxy.scrollTo(newProject.id, anchor: .top)
         }
         // Direkt zur Detailview springen
         navigationPath.append(newProject)

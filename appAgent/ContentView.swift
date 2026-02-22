@@ -8,6 +8,15 @@ struct ContentView: View {
   var body: some View {
     NavigationStack {
       VStack(spacing: 0) {
+        NavigationLink(
+          destination: selectedProject.map { ProjectDetailView(project: $0) },
+          isActive: Binding(
+            get: { selectedProject != nil },
+            set: { if !$0 { selectedProject = nil } }
+          )
+        ) {
+          EmptyView()
+        }
         List {
           ForEach(projects) { project in
             NavigationLink(destination: ProjectDetailView(project: project)) {

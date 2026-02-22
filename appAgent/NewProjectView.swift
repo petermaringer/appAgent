@@ -7,6 +7,7 @@ struct NewProjectView: View {
   @State private var appIdentifier: String = ""
   @State private var showingAlert = false
   @State private var alertMessage = ""
+  let onCreated: (ProjectEngine) -> Void
   
   var body: some View {
     NavigationView {
@@ -120,6 +121,6 @@ struct NewProjectView: View {
     
     let engine = ProjectEngine(projectFolder: newFolder)
     projects.append(engine)
-    dismiss()
+    onCreated(engine)
   }
 }

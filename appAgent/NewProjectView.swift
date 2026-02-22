@@ -120,7 +120,7 @@ struct NewProjectView: View {
     try? ymlContent.write(to: ymlFile, atomically: true, encoding: .utf8)
     
     let engine = ProjectEngine(projectFolder: newFolder)
-    projects.append(engine)
+    //projects.append(engine)
     onCreated(engine)
     dismiss()
   }

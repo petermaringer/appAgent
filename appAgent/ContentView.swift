@@ -8,26 +8,29 @@ struct ContentView: View {
   var body: some View {
     NavigationStack(path: $navigationPath) {
       VStack(spacing: 0) {
-        List {
-          ForEach(projects) { project in
-            NavigationLink(value: project) {
-              Text(project.projectName)
-                .font(.body)
-                .frame(height: 36, alignment: .leading)
-            }
-            .swipeActions(allowsFullSwipe: false) {
-              Button(role: .destructive) {
-                if let index = projects.firstIndex(where: { $0.id == project.id }) {
-                  try? FileManager.default.removeItem(at: project.projectFolder)
-                  projects.remove(at: index)
-                }
-              } label: {
-                Label("Delete", systemImage: "trash")
+        ScrollViewReader { scrollProxy in
+          List {
+            ForEach(projects) { project in
+              NavigationLink(value: project) {
+                Text(project.projectName)
+                  .font(.body)
+                  .frame(height: 36, alignment: .leading)
               }
+              .swipeActions(allowsFullSwipe: false) {
+                Button(role: .destructive) {
+                  if let index = projects.firstIndex(where: { $0.id == project.id }) {
+                    try? FileManager.default.removeItem(at: project.projectFolder)
+                    projects.remove(at: index)
+                  }
+                } label: {
+                  Label("Delete", systemImage: "trash")
+                }
+              }
+              .id(project.id)
             }
           }
+          .listStyle(.plain)
         }
-        .listStyle(.plain)
 
         Button("Neues Projekt") {
           showingNewProjectSheet = true
@@ -54,6 +57,9 @@ struct ContentView: View {
           let date1 = (try? $0.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
           let date2 = (try? $1.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
           return date1 > date2
+        }
+        DispatchQueue.main.async {
+          scrollProxy.scrollTo(newProject.id, anchor: .top)
         }
         // Direkt zur Detailview springen
         navigationPath.append(newProject)

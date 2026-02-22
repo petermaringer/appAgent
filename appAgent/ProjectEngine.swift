@@ -1,8 +1,16 @@
 import Foundation
 
-class ProjectEngine: ObservableObject, Identifiable {
+class ProjectEngine: ObservableObject, Identifiable, Hashable {
   let id = UUID()
   let projectFolder: URL
+  
+  static func == (lhs: ProjectEngine, rhs: ProjectEngine) -> Bool {
+    lhs.id == rhs.id
+  }
+  func hash(into hasher: inout Hasher) {
+    hasher.combine(id)
+  }
+  
   @Published var promptHistory: [String] = []
 
   var projectName: String { projectFolder.lastPathComponent }

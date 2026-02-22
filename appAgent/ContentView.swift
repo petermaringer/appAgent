@@ -3,20 +3,11 @@ import SwiftUI
 struct ContentView: View {
   @State private var projects: [ProjectEngine] = []
   @State private var showingNewProjectSheet = false
-  @State private var selectedProject: ProjectEngine?
+  @State private var navigationPath = NavigationPath()
 
   var body: some View {
     NavigationStack {
       VStack(spacing: 0) {
-        NavigationLink(
-          destination: Group { if let project = selectedProject { ProjectDetailView(project: project) } },
-          isActive: Binding(
-            get: { selectedProject != nil },
-            set: { if !$0 { selectedProject = nil } }
-          )
-        ) {
-          EmptyView()
-        }
         List {
           ForEach(projects) { project in
             NavigationLink(destination: ProjectDetailView(project: project)) {
@@ -50,11 +41,14 @@ struct ContentView: View {
       }
       .background(Color(.systemBackground).ignoresSafeArea())
       .navigationTitle("App-Generator")
+      .navigationDestination(for: ProjectEngine.self) { project in
+        ProjectDetailView(project: project)
+      }
     }
     .sheet(isPresented: $showingNewProjectSheet) {
       NewProjectView(projects: $projects) { newProject in
         showingNewProjectSheet = false
-        selectedProject = newProject
+        navigationPath.append(newProject)
       }
     }
     .onAppear(perform: loadProjects)

@@ -5,116 +5,6 @@ struct ContentView: View {
   @State private var showingSettingsSheet = false
   @State private var showingNewProjectSheet = false
   @State private var navigationPath = NavigationPath()
-  
-  private let buttonHeight: CGFloat = 20 + 14*2
-  
-  var body: some View {
-    NavigationStack(path: $navigationPath) {
-      //VStack(spacing: 0) {
-      ZStack(alignment: .bottom) {
-        ScrollViewReader { scrollProxy in
-          List {
-            ForEach(projects) { project in
-              NavigationLink(value: project) {
-                Text(project.projectName)
-                  .font(.body)
-                  .frame(height: 36, alignment: .leading)
-              }
-              .swipeActions(allowsFullSwipe: false) {
-                Button(role: .destructive) {
-                  if let index = projects.firstIndex(where: { $0.id == project.id }) {
-                    try? FileManager.default.removeItem(at: project.projectFolder)
-                    projects.remove(at: index)
-                  }
-                } label: {
-                  Label("Delete", systemImage: "trash")
-                }
-              }
-              .id(project.id)
-            }
-          }
-          .listStyle(.plain)
-          .padding(.bottom, buttonHeight + 16)
-          .onChange(of: projects) {
-            if let firstProject = projects.first {
-              DispatchQueue.main.async {
-                scrollProxy.scrollTo(firstProject.id, anchor: .top)
-              }
-            }
-          }
-        }
-        
-        Button("Neues Projekt") { showingNewProjectSheet = true }
-    .font(.title3.bold())
-    .frame(maxWidth: .infinity)
-    .padding(.vertical, 14)
-    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-    .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-    .padding(.horizontal)
-      }
-      .background(Color(.systemBackground).ignoresSafeArea())
-      .navigationTitle("App-Generator")
-      .toolbar {
-  ToolbarItem(placement: .navigationBarTrailing) {
-    Button {
-      showingSettingsSheet = true
-    } label: {
-      Image(systemName: "gearshape")
-    }
-  }
-}
-      .navigationDestination(for: ProjectEngine.self) { project in
-        ProjectDetailView(project: project)
-      }
-    }
-    .tint(.blue)
-    .sheet(isPresented: $showingSettingsSheet) {
-  SettingsView()
-}
-    .sheet(isPresented: $showingNewProjectSheet) {
-      NewProjectView(projects: $projects) { newProject in
-        showingNewProjectSheet = false
-        projects.append(newProject)
-        // Direkt sortieren, damit Neuestes oben steht
-        projects.sort {
-          let date1 = (try? $0.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
-          let date2 = (try? $1.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
-          return date1 > date2
-        }
-        // Direkt zur Detailview springen
-        navigationPath.append(newProject)
-      }
-    }
-    .onAppear(perform: loadProjects)
-  }
-
-  func loadProjects() {
-    let fm = FileManager.default
-    let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
-    if let folders = try? fm.contentsOfDirectory(
-      at: docs,
-      includingPropertiesForKeys: [.creationDateKey],
-      options: []
-    ) {
-      projects = folders
-        .filter { $0.hasDirectoryPath }
-        .sorted {
-          let date1 = (try? $0.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
-          let date2 = (try? $1.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
-          return date1 > date2
-        }
-        .map { ProjectEngine(projectFolder: $0) }
-    }
-  }
-}
-
-/*import SwiftUI
-
-struct ContentView: View {
-  @State private var projects: [ProjectEngine] = []
-  @State private var showingSettingsSheet = false
-  @State private var showingNewProjectSheet = false
-  @State private var navigationPath = NavigationPath()
 
   var body: some View {
     NavigationStack(path: $navigationPath) {
@@ -150,7 +40,7 @@ struct ContentView: View {
           }
         }
         
-        Button("Neues Projekt") {
+        /*Button("Neues Projekt") {
           showingNewProjectSheet = true
         }
         .font(.title3.bold())
@@ -158,7 +48,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal)
         .padding(.vertical, 6)
-        .background(Color(.systemGray6))
+        .background(Color(.systemGray6))*/
       }
       .background(Color(.systemBackground).ignoresSafeArea())
       .navigationTitle("App-Generator")
@@ -170,6 +60,11 @@ struct ContentView: View {
       Image(systemName: "gearshape")
     }
   }
+  ToolbarItem(placement: .bottomBar) {
+          Button("Neues Projekt") {
+            showingNewProjectSheet = true
+          }
+        }
 }
       .navigationDestination(for: ProjectEngine.self) { project in
         ProjectDetailView(project: project)
@@ -177,8 +72,8 @@ struct ContentView: View {
     }
     .tint(.blue)
     .sheet(isPresented: $showingSettingsSheet) {
-  SettingsView()
-}
+      SettingsView()
+    }
     .sheet(isPresented: $showingNewProjectSheet) {
       NewProjectView(projects: $projects) { newProject in
         showingNewProjectSheet = false
@@ -214,7 +109,7 @@ struct ContentView: View {
         .map { ProjectEngine(projectFolder: $0) }
     }
   }
-}*/
+}
 
 /*import SwiftUI
 

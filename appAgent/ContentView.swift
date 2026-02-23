@@ -26,7 +26,7 @@ struct ContentView: View {
                 } label: {
                   Label("Delete", systemImage: "trash")
                 }
-                .tint(nil)
+                .tint(.red)
               }
               .id(project.id)
             }

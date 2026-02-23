@@ -66,7 +66,7 @@ struct ContentView: View {
             showingNewProjectSheet = true
           }
           //.contentShape(Rectangle())
-          .controlSize(.large)
+          //.controlSize(.large)
         }
         /*ToolbarItem(placement: .bottomBar) {
  Button {

@@ -42,12 +42,23 @@ struct ContentView: View {
         Button("Neues Projekt") {
           showingNewProjectSheet = true
         }
+        .font(.title3.bold())
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .padding(.horizontal)
+        .background(.ultraThinMaterial)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                
+        /*Button("Neues Projekt") {
+          showingNewProjectSheet = true
+        }
         .font(.body.bold())
         .frame(height: 44)
         .frame(maxWidth: .infinity)
         .padding(.horizontal)
         .padding(.vertical, 6)
-        .background(Color(.systemGray6))
+        .background(Color(.systemGray6))*/
       }
       .background(Color(.systemBackground).ignoresSafeArea())
       .navigationTitle("App-Generator")

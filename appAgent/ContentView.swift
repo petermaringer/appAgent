@@ -10,6 +10,7 @@ struct ContentView: View {
       VStack(spacing: 0) {
         ScrollViewReader { scrollProxy in
           List {
+            Color.clear.frame(height: 0).id("top")
             ForEach(projects) { project in
               NavigationLink(value: project) {
                 Text(project.projectName)
@@ -26,14 +27,15 @@ struct ContentView: View {
                   Label("Delete", systemImage: "trash")
                 }
               }
-              .id(project.id)
+              //.id(project.id)
             }
           }
           .listStyle(.plain)
           .onChange(of: projects) {
             if let firstProject = projects.first {
               DispatchQueue.main.async {
-                scrollProxy.scrollTo(firstProject.id, anchor: .top)
+                //scrollProxy.scrollTo(firstProject.id, anchor: .top)
+                scrollProxy.scrollTo("top", anchor: .top)
               }
             }
           }

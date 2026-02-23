@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
   @State private var projects: [ProjectEngine] = []
+  @State private var showingSettingsSheet = false
   @State private var showingNewProjectSheet = false
   @State private var navigationPath = NavigationPath()
 
@@ -39,7 +40,7 @@ struct ContentView: View {
           }
         }
 
-        Button("Neues Projekt") {
+        /*Button("Neues Projekt") {
           showingNewProjectSheet = true
         }
         .font(.title3.bold())
@@ -48,24 +49,36 @@ struct ContentView: View {
         .padding(.horizontal)
         .background(.ultraThinMaterial)
         .cornerRadius(16)
-        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)*/
                 
-        /*Button("Neues Projekt") {
+        Button("Neues Projekt") {
           showingNewProjectSheet = true
         }
-        .font(.body.bold())
+        .font(.title3.bold())
         .frame(height: 44)
         .frame(maxWidth: .infinity)
         .padding(.horizontal)
         .padding(.vertical, 6)
-        .background(Color(.systemGray6))*/
+        .background(Color(.systemGray6))
       }
       .background(Color(.systemBackground).ignoresSafeArea())
       .navigationTitle("App-Generator")
+      .toolbar {
+  ToolbarItem(placement: .navigationBarTrailing) {
+    Button {
+      showingSettingsSheet = true
+    } label: {
+      Image(systemName: "gearshape")
+    }
+  }
+}
       .navigationDestination(for: ProjectEngine.self) { project in
         ProjectDetailView(project: project)
       }
     }
+    .sheet(isPresented: $showingSettingsSheet) {
+  SettingsView()
+}
     .sheet(isPresented: $showingNewProjectSheet) {
       NewProjectView(projects: $projects) { newProject in
         showingNewProjectSheet = false

@@ -32,12 +32,12 @@ struct ContentView: View {
           }
           .listStyle(.plain)
           .onChange(of: projects) {
-            if let firstProject = projects.first {
+            //if let firstProject = projects.first {
               DispatchQueue.main.async {
                 //scrollProxy.scrollTo(firstProject.id, anchor: .top)
                 scrollProxy.scrollTo("top", anchor: .top)
               }
-            }
+            //}
           }
         }
 

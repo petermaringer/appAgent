@@ -61,13 +61,26 @@ struct ContentView: View {
       Image(systemName: "gearshape")
     }
   }
-  ToolbarItem(placement: .bottomBar) {
+  /*ToolbarItem(placement: .bottomBar) {
           Button("Neues Projekt") {
             showingNewProjectSheet = true
           }
           .contentShape(Rectangle())
           .controlSize(.large)
-        }
+        }*/
+        ToolbarItem(placement: .bottomBar) {
+  if #available(iOS 26.0, *) {
+    Button("Neues Projekt") {
+      showingNewProjectSheet = true
+    }
+    .buttonSizing(.flexible)
+  } else {
+    Button("Neues Projekt") {
+      showingNewProjectSheet = true
+    }
+    
+  }
+}
 }
       .navigationDestination(for: ProjectEngine.self) { project in
         ProjectDetailView(project: project)

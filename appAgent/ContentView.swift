@@ -26,6 +26,7 @@ struct ContentView: View {
                 } label: {
                   Label("Delete", systemImage: "trash")
                 }
+                .tint(nil)
               }
               .id(project.id)
             }
@@ -64,6 +65,8 @@ struct ContentView: View {
           Button("Neues Projekt") {
             showingNewProjectSheet = true
           }
+          .contentShape(Rectangle())
+          .controlSize(.large)
         }
 }
       .navigationDestination(for: ProjectEngine.self) { project in

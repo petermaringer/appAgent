@@ -69,17 +69,18 @@ struct ContentView: View {
           .controlSize(.large)
         }*/
         ToolbarItem(placement: .bottomBar) {
-  if #available(iOS 26.0, *) {
-    Button("Neues Projekt") {
+ Button {
       showingNewProjectSheet = true
+    } label: {
+      HStack {
+        Spacer()
+        Text("Neues Projekt")
+          .font(.headline)
+        Spacer()
+      }
+      .padding(.vertical, 12)
+      .contentShape(Rectangle())
     }
-    .buttonSizing(.flexible)
-  } else {
-    Button("Neues Projekt") {
-      showingNewProjectSheet = true
-    }
-    
-  }
 }
 }
       .navigationDestination(for: ProjectEngine.self) { project in

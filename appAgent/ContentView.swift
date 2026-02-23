@@ -61,14 +61,14 @@ struct ContentView: View {
       Image(systemName: "gearshape")
     }
   }
-  /*ToolbarItem(placement: .bottomBar) {
+  ToolbarItem(placement: .bottomBar) {
           Button("Neues Projekt") {
             showingNewProjectSheet = true
           }
-          .contentShape(Rectangle())
+          //.contentShape(Rectangle())
           .controlSize(.large)
-        }*/
-        ToolbarItem(placement: .bottomBar) {
+        }
+        /*ToolbarItem(placement: .bottomBar) {
  Button {
       showingNewProjectSheet = true
     } label: {
@@ -81,7 +81,7 @@ struct ContentView: View {
       .padding(.vertical, 12)
       .contentShape(Rectangle())
     }
-}
+}*/
 }
       .navigationDestination(for: ProjectEngine.self) { project in
         ProjectDetailView(project: project)

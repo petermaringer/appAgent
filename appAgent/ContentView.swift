@@ -94,10 +94,11 @@ struct ContentView: View {
   struct ToolbarButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .foregroundStyle(.link)
+            //.foregroundStyle(.link)
+            .font(.headline)
             .padding(.vertical)
             .frame(maxWidth: .infinity)
-            .background(.yellow)
+            //.background(.yellow)
             .opacity(configuration.isPressed ? 0.2 : 1)
             .contentShape(Rectangle())
     }

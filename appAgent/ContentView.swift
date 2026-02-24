@@ -26,7 +26,7 @@ struct ContentView: View {
                 } label: {
                   Label("Delete", systemImage: "trash")
                 }
-                .tint(.red)
+                .tint(nil)
               }
               .id(project.id)
             }
@@ -54,17 +54,23 @@ struct ContentView: View {
       .background(Color(.systemBackground).ignoresSafeArea())
       .navigationTitle("App-Generator")
       .toolbar {
-  ToolbarItem(placement: .navigationBarTrailing) {
-    Button {
-      showingSettingsSheet = true
-    } label: {
-      Image(systemName: "gearshape")
-    }
-  }
-  ToolbarItem(placement: .bottomBar) {
-          Button("Neues Projekt") {
-            showingNewProjectSheet = true
+        ToolbarItem(placement: .navigationBarTrailing) {
+          Button {
+            showingSettingsSheet = true
+          } label: {
+            Image(systemName: "gearshape")
           }
+        }
+        ToolbarItem(placement: .bottomBar) {
+          Button {
+            showingNewProjectSheet = true
+          } label: {
+            Text("Neues Projekt")
+              .font(.headline)
+          }
+          //Button("Neues Projekt") {
+            //showingNewProjectSheet = true
+          //}
           //.contentShape(Rectangle())
           //.controlSize(.large)
         }
@@ -82,7 +88,7 @@ struct ContentView: View {
       .contentShape(Rectangle())
     }
 }*/
-}
+      }
       .navigationDestination(for: ProjectEngine.self) { project in
         ProjectDetailView(project: project)
       }

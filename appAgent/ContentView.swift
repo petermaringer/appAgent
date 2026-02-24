@@ -57,12 +57,11 @@ struct ContentView: View {
           } label: {
             Text("Neues Projekt")
               //.font(.headline)
-              .padding(.vertical, 12)
           }
-          .controlSize(.large)
           .buttonStyle(.borderedProminent)
           //.padding(.vertical)
-          //.contentShape(Rectangle())
+          .frame(maxWidth: .infinity)
+          .contentShape(Rectangle())
           /*Button("Neues Projekt") {
             showingNewProjectSheet = true
           }

@@ -57,11 +57,9 @@ struct ContentView: View {
           } label: {
             Text("Neues Projekt")
               //.font(.headline)
-              //.padding(.vertical, 12)
-              .padding(.vertical)
-              .contentShape(Rectangle())
+              .padding(.vertical, 12)
           }
-          //.controlSize(.large)
+          .controlSize(.large)
           .buttonStyle(.borderedProminent)
           //.padding(.vertical)
           //.contentShape(Rectangle())

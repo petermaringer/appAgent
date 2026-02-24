@@ -52,6 +52,15 @@ struct ContentView: View {
           }
         }
         ToolbarItem(placement: .bottomBar) {
+        HStack {
+    Spacer()
+    Button("Neues Projekt") {
+      showingNewProjectSheet = true
+    }
+    .frame(maxWidth: .infinity)
+    Spacer()
+  }
+
           /*Button {
             showingNewProjectSheet = true
           } label: {
@@ -65,10 +74,10 @@ struct ContentView: View {
           .buttonStyle(.borderedProminent)
           .padding(.vertical)
           .contentShape(Rectangle())*/
-          Button("Neues Projekt") {
+          /*Button("Neues Projekt") {
             showingNewProjectSheet = true
           }
-          .buttonStyle(ToolbarButton())
+          .buttonStyle(ToolbarButton())*/
         }
       }
       .navigationDestination(for: ProjectEngine.self) { project in

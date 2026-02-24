@@ -99,8 +99,8 @@ struct ContentView: View {
         configuration.label
             //.foregroundStyle(.link)
             .font(.headline)
-            .padding(.vertical)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal)
+            //.frame(maxWidth: .infinity)
             //.background(.yellow)
             .opacity(configuration.isPressed ? 0.2 : 1)
             .contentShape(Rectangle())

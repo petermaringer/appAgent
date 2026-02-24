@@ -57,11 +57,11 @@ struct ContentView: View {
           } label: {
             Text("Neues Projekt")
               .font(.headline)
+              .padding(.vertical, 12)
+              .contentShape(Rectangle())
           }
-          .padding(.vertical, 12)
-          .contentShape(Rectangle())
-          .controlSize(.large)
-          .buttonStyle(.borderedProminent)
+          //.controlSize(.large)
+          //.buttonStyle(.borderedProminent)
         }
       }
       .navigationDestination(for: ProjectEngine.self) { project in

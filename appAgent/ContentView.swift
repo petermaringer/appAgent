@@ -96,12 +96,11 @@ struct ContentView: View {
         configuration.label
             //.foregroundStyle(.link)
             .font(.headline)
-            .padding(.vertical)
+            //.padding(.vertical)
             .frame(maxWidth: .infinity)
-            //.background(.yellow)
+            .background(.blue)
             .opacity(configuration.isPressed ? 0.2 : 1)
             .contentShape(Rectangle())
-            .buttonStyle(.borderedProminent)
     }
   }
   

@@ -63,6 +63,7 @@ struct ContentView: View {
           }
           //.controlSize(.large)
           .buttonStyle(.borderedProminent)
+          .padding(.vertical)
           .contentShape(Rectangle())
           /*Button("Neues Projekt") {
             showingNewProjectSheet = true

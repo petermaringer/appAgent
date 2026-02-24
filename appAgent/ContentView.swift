@@ -52,28 +52,19 @@ struct ContentView: View {
           }
         }
         ToolbarItem(placement: .bottomBar) {
-        HStack {
-    Spacer()
-    Button("Neues Projekt") {
-      showingNewProjectSheet = true
-    }
-    .frame(maxWidth: .infinity)
-    Spacer()
-  }
-
-          /*Button {
+          Button {
             showingNewProjectSheet = true
           } label: {
             Text("Neues Projekt")
               //.font(.headline)
               //.padding(.vertical, 12)
-              //.padding(.vertical)
-              //.contentShape(Rectangle())
+              .padding(.vertical)
+              .contentShape(Rectangle())
           }
           //.controlSize(.large)
           .buttonStyle(.borderedProminent)
-          .padding(.vertical)
-          .contentShape(Rectangle())*/
+          //.padding(.vertical)
+          //.contentShape(Rectangle())
           /*Button("Neues Projekt") {
             showingNewProjectSheet = true
           }
@@ -108,8 +99,8 @@ struct ContentView: View {
         configuration.label
             //.foregroundStyle(.link)
             .font(.headline)
-            .padding(.horizontal)
-            //.frame(maxWidth: .infinity)
+            .padding(.vertical)
+            .frame(maxWidth: .infinity)
             //.background(.yellow)
             .opacity(configuration.isPressed ? 0.2 : 1)
             .contentShape(Rectangle())

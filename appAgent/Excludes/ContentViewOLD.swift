@@ -5,7 +5,7 @@ struct ContentView: View {
   @State private var showingSettingsSheet = false
   @State private var showingNewProjectSheet = false
   @State private var navigationPath = NavigationPath()
-  
+
   var body: some View {
     NavigationStack(path: $navigationPath) {
       VStack(spacing: 0) {
@@ -40,6 +40,16 @@ struct ContentView: View {
             }
           }
         }
+        
+        /*Button("Neues Projekt") {
+          showingNewProjectSheet = true
+        }
+        .font(.title3.bold())
+        .frame(height: 44)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+        .background(Color(.systemGray6))*/
       }
       .background(Color(.systemBackground).ignoresSafeArea())
       .navigationTitle("App-Generator")
@@ -58,11 +68,26 @@ struct ContentView: View {
             Text("Neues Projekt")
               .font(.headline)
           }
-          .padding(.vertical, 12)
-          .contentShape(Rectangle())
-          .controlSize(.large)
-          .buttonStyle(.borderedProminent)
+          //Button("Neues Projekt") {
+            //showingNewProjectSheet = true
+          //}
+          //.contentShape(Rectangle())
+          //.controlSize(.large)
         }
+        /*ToolbarItem(placement: .bottomBar) {
+ Button {
+      showingNewProjectSheet = true
+    } label: {
+      HStack {
+        Spacer()
+        Text("Neues Projekt")
+          .font(.headline)
+        Spacer()
+      }
+      .padding(.vertical, 12)
+      .contentShape(Rectangle())
+    }
+}*/
       }
       .navigationDestination(for: ProjectEngine.self) { project in
         ProjectDetailView(project: project)
@@ -76,17 +101,19 @@ struct ContentView: View {
       NewProjectView(projects: $projects) { newProject in
         showingNewProjectSheet = false
         projects.append(newProject)
+        // Direkt sortieren, damit Neuestes oben steht
         projects.sort {
           let date1 = (try? $0.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
           let date2 = (try? $1.projectFolder.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
           return date1 > date2
         }
+        // Direkt zur Detailview springen
         navigationPath.append(newProject)
       }
     }
     .onAppear(perform: loadProjects)
   }
-  
+
   func loadProjects() {
     let fm = FileManager.default
     let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -106,3 +133,58 @@ struct ContentView: View {
     }
   }
 }
+
+/*import SwiftUI
+
+struct ContentView: View {
+  @State private var projects: [ProjectEngine] = []
+  @State private var showingNewProjectSheet = false
+
+  var body: some View {
+    NavigationStack {
+      VStack(spacing: 0) {
+        List {
+          ForEach(projects) { project in
+            NavigationLink(destination: ProjectDetailView(project: project)) {
+              Text(project.projectName)
+                .font(.body)
+                .frame(height: 44, alignment: .leading)
+            }
+          }
+          .onDelete { indexSet in
+            for index in indexSet {
+              let project = projects[index]
+              try? FileManager.default.removeItem(at: project.projectFolder)
+            }
+            projects.remove(atOffsets: indexSet)
+          }
+        }
+        .listStyle(.plain)
+
+        Button("Neues Projekt") {
+          showingNewProjectSheet = true
+        }
+        .font(.body)
+        .frame(height: 44)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+        .background(Color(.systemGray6))
+      }
+      .background(Color(.systemBackground).ignoresSafeArea())
+      .navigationTitle("App-Generator")
+    }
+    .sheet(isPresented: $showingNewProjectSheet) {
+      NewProjectView(projects: $projects)
+    }
+    .onAppear(perform: loadProjects)
+  }
+
+  func loadProjects() {
+    let fm = FileManager.default
+    let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first!
+    if let folders = try? fm.contentsOfDirectory(at: docs, includingPropertiesForKeys: nil) {
+      projects = folders.filter { $0.hasDirectoryPath }.map { ProjectEngine(projectFolder: $0) }
+    }
+  }
+}*/

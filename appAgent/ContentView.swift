@@ -52,7 +52,7 @@ struct ContentView: View {
           }
         }
         ToolbarItem(placement: .bottomBar) {
-          Button {
+          /*Button {
             showingNewProjectSheet = true
           } label: {
             Text("Neues Projekt")
@@ -61,7 +61,11 @@ struct ContentView: View {
               .contentShape(Rectangle())
           }
           //.controlSize(.large)
-          //.buttonStyle(.borderedProminent)
+          //.buttonStyle(.borderedProminent)*/
+          Button("Neues Projekt") {
+            showingNewProjectSheet = true
+          }
+          .buttonStyle(ToolbarButton())
         }
       }
       .navigationDestination(for: ProjectEngine.self) { project in
@@ -85,6 +89,18 @@ struct ContentView: View {
       }
     }
     .onAppear(perform: loadProjects)
+  }
+  
+  struct ToolbarButton: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(.link)
+            .padding(.vertical)
+            .frame(maxWidth: .infinity)
+            .background(.yellow)
+            .opacity(configuration.isPressed ? 0.2 : 1)
+            .contentShape(Rectangle())
+    }
   }
   
   func loadProjects() {

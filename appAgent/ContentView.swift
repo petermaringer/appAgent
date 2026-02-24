@@ -65,7 +65,7 @@ struct ContentView: View {
           Button("Neues Projekt") {
             showingNewProjectSheet = true
           }
-          .buttonStyle(ToolbarButton())
+          //.buttonStyle(ToolbarButton())
           .buttonStyle(.borderedProminent)
         }
       }

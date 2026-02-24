@@ -66,6 +66,7 @@ struct ContentView: View {
             showingNewProjectSheet = true
           }
           .buttonStyle(ToolbarButton())
+          .buttonStyle(.borderedProminent)
         }
       }
       .navigationDestination(for: ProjectEngine.self) { project in

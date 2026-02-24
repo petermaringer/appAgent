@@ -52,7 +52,7 @@ struct ContentView: View {
           }
         }
         ToolbarItem(placement: .bottomBar) {
-          Button {
+          /*Button {
             showingNewProjectSheet = true
           } label: {
             Text("Neues Projekt")
@@ -64,11 +64,11 @@ struct ContentView: View {
           //.controlSize(.large)
           .buttonStyle(.borderedProminent)
           .padding(.vertical)
-          .contentShape(Rectangle())
-          /*Button("Neues Projekt") {
+          .contentShape(Rectangle())*/
+          Button("Neues Projekt") {
             showingNewProjectSheet = true
           }
-          .buttonStyle(ToolbarButton())*/
+          .buttonStyle(ToolbarButton())
         }
       }
       .navigationDestination(for: ProjectEngine.self) { project in

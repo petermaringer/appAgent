@@ -58,10 +58,11 @@ struct ContentView: View {
             Text("Neues Projekt")
               //.font(.headline)
           }
-          .buttonStyle(.borderedProminent)
+          
           //.padding(.vertical)
           .frame(maxWidth: .infinity)
           .contentShape(Rectangle())
+          .buttonStyle(.borderedProminent)
           /*Button("Neues Projekt") {
             showingNewProjectSheet = true
           }

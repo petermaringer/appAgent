@@ -15,8 +15,9 @@ struct NewProjectView: View {
       Form {
         Section(header: Text("Angaben zum Projekt")) {
           TextField("Projektname", text: $projectName)
-            .onChange(of: projectName) { newValue in
-              let sanitized = newValue.lowercased().components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_")).inverted).joined()
+            //.onChange(of: projectName) { newValue in
+            .onChange(of: projectName) { projectName, _ in
+              let sanitized = projectName.lowercased().components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_")).inverted).joined()
               
               let basePrefix = bundleIDPrefix.isEmpty ? "com.meinefirma" : bundleIDPrefix
               
@@ -53,6 +54,7 @@ struct NewProjectView: View {
         Text(alertMessage)
       }
     }
+    .tint(.blue)
   }
   
   func createProject() {

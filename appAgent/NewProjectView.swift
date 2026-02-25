@@ -34,7 +34,8 @@ struct NewProjectView: View {
               appIdentifier = "\(bundleIDPrefix).\(sanitized)"
             }*/
           TextField("App-Identifier (z.B. com.meinefirma.projekt)", text: $appIdentifier)
-            .autocapitalization(.none)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled(true)
         }
       }
       .navigationTitle("Neues Projekt")
@@ -67,6 +68,14 @@ struct NewProjectView: View {
       return
     }
     
+    // Prüfen, ob das Projekt bereits existiert
+    let newFolder = docs.appendingPathComponent(validName)
+    if fm.fileExists(atPath: newFolder.path) {
+      alertMessage = "Ein Projekt mit diesem Namen existiert bereits."
+      showingAlert = true
+      return
+    }
+    
     // App-Identifier validieren
     let allowedIdentifierChars = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._-"))
     let filteredIdentifier = appIdentifier.components(separatedBy: allowedIdentifierChars.inverted).joined()
@@ -76,7 +85,6 @@ struct NewProjectView: View {
       return
     }
     
-    let newFolder = docs.appendingPathComponent(validName)
     try? fm.createDirectory(at: newFolder, withIntermediateDirectories: true)
     
     // Unterordner nach Projektname anlegen

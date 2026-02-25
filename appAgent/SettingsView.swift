@@ -25,7 +25,7 @@ struct SettingsView: View {
 
         Section(header: Text("GitHub Einstellungen")) {
           TextField("Token", text: $githubToken)
-            .textContentType(.password)
+            //.textContentType(.password)
           TextField("Owner", text: $githubOwner)
           TextField("Repo", text: $githubRepo)
           Text("Repo wird automatisch erstellt, wenn es nicht existiert.")
@@ -35,13 +35,15 @@ struct SettingsView: View {
 
         Section(header: Text("OpenRouter Einstellungen")) {
           TextField("API-Key", text: $apiKey)
-            .textContentType(.password)
+            //.textContentType(.password)
           TextField("Modell", text: $model)
           Text("Beispielmodelle: gpt-4.1-mini, gpt-4.1, gpt-3.5-turbo")
             .font(.footnote)
             .foregroundColor(.gray)
         }
       }
+      .textInputAutocapitalization(.never)
+      .autocorrectionDisabled(true)
       .navigationTitle("Settings")
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {

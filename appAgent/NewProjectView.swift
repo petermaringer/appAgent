@@ -8,7 +8,7 @@ struct NewProjectView: View {
   @State private var showingAlert = false
   @State private var alertMessage = ""
   let onCreated: (ProjectEngine) -> Void
-  @AppStorage("bundleIDPrefix") private var bundleIDPrefix: String = "com.meinefirma"
+  @AppStorage("bundleIDPrefix") private var bundleIDPrefix: String = ""
   
   var body: some View {
     NavigationView {
@@ -18,13 +18,15 @@ struct NewProjectView: View {
             .onChange(of: projectName) { newValue in
               let sanitized = newValue.lowercased().components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_")).inverted).joined()
               
+              let basePrefix = bundleIDPrefix.isEmpty ? "com.meinefirma" : bundleIDPrefix
+              
               if let lastDot = appIdentifier.lastIndex(of: ".") {
                 let prefix = String(appIdentifier[..<lastDot])
-                appIdentifier = sanitized.isEmpty ? prefix : "\(prefix).\(sanitized)"
+                appIdentifier = "\(prefix).\(sanitized)"
               } else if !appIdentifier.isEmpty {
-                appIdentifier = sanitized.isEmpty ? appIdentifier : "\(appIdentifier).\(sanitized)"
+                appIdentifier = "\(appIdentifier).\(sanitized)"
               } else {
-                appIdentifier = sanitized.isEmpty ? bundleIDPrefix : "\(bundleIDPrefix).\(sanitized)"
+                appIdentifier = "\(basePrefix).\(sanitized)"
               }
             }
             /*.onChange(of: projectName) { newValue in

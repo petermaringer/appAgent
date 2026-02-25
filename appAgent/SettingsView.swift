@@ -17,7 +17,7 @@ struct SettingsView: View {
       Form {
         Section(header: Text("Projekt Einstellungen")) {
           TextField("Bundle-ID Prefix", text: $bundleIDPrefix)
-            .textContentType(.none)
+            //.textContentType(.none)
           Text("Beispiel: com.meinunternehmen")
             .font(.footnote)
             .foregroundColor(.gray)

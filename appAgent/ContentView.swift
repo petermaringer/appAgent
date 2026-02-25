@@ -62,6 +62,7 @@ struct ContentView: View {
           .frame(maxWidth: .infinity)
           .contentShape(Rectangle())
           .buttonStyle(.borderedProminent)*/
+          
           Button("Neues Projekt") {
             showingNewProjectSheet = true
           }

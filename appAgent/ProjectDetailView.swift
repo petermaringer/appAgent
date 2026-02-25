@@ -9,7 +9,7 @@ struct ProjectDetailView: View {
   
   @AppStorage("githubToken") private var token: String = ""
 @AppStorage("githubOwner") private var owner: String = ""
-@AppStorage("githubRepo") private var repo: String = ""
+//@AppStorage("githubRepo") private var repo: String = ""
 
 
   
@@ -74,7 +74,7 @@ struct ProjectDetailView: View {
         
        Button {
   Task {
-    let gitService = GitHubService(token: token, repoOwner: owner, repoName: repo)
+    let gitService = GitHubService(token: token, repoOwner: owner, repoName: project.projectName)
     await gitService.pushProject(at: project.projectFolder) { status in
       statusMessage = status
     }

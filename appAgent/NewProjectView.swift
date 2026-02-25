@@ -8,12 +8,17 @@ struct NewProjectView: View {
   @State private var showingAlert = false
   @State private var alertMessage = ""
   let onCreated: (ProjectEngine) -> Void
+  @AppStorage("bundleIDPrefix") private var bundleIDPrefix: String = ""
   
   var body: some View {
     NavigationView {
       Form {
         Section(header: Text("Angaben zum Projekt")) {
           TextField("Projektname", text: $projectName)
+            .onChange(of: projectName) { newValue in
+              let sanitized = newValue.lowercased().components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_")).inverted).joined()
+              appIdentifier = "\(bundleIDPrefix).\(sanitized)"
+            }
           TextField("App-Identifier (z.B. com.meinefirma.projekt)", text: $appIdentifier)
             .autocapitalization(.none)
         }

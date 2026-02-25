@@ -8,7 +8,7 @@ struct NewProjectView: View {
   @State private var showingAlert = false
   @State private var alertMessage = ""
   let onCreated: (ProjectEngine) -> Void
-  @AppStorage("bundleIDPrefix") private var bundleIDPrefix: String = ""
+  @AppStorage("bundleIDPrefix") private var bundleIDPrefix: String = "com.meinefirma"
   
   var body: some View {
     NavigationView {
@@ -17,8 +17,20 @@ struct NewProjectView: View {
           TextField("Projektname", text: $projectName)
             .onChange(of: projectName) { newValue in
               let sanitized = newValue.lowercased().components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_")).inverted).joined()
-              appIdentifier = "\(bundleIDPrefix).\(sanitized)"
+              
+              if let lastDot = appIdentifier.lastIndex(of: ".") {
+                let prefix = String(appIdentifier[..<lastDot])
+                appIdentifier = sanitized.isEmpty ? prefix : "\(prefix).\(sanitized)"
+              } else if !appIdentifier.isEmpty {
+                appIdentifier = sanitized.isEmpty ? appIdentifier : "\(appIdentifier).\(sanitized)"
+              } else {
+                appIdentifier = sanitized.isEmpty ? bundleIDPrefix : "\(bundleIDPrefix).\(sanitized)"
+              }
             }
+            /*.onChange(of: projectName) { newValue in
+              let sanitized = newValue.lowercased().components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_")).inverted).joined()
+              appIdentifier = "\(bundleIDPrefix).\(sanitized)"
+            }*/
           TextField("App-Identifier (z.B. com.meinefirma.projekt)", text: $appIdentifier)
             .autocapitalization(.none)
         }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GitSettingsSheet: View {
   let projectFolder: URL
+  var onFinished: ((Bool) -> Void)?   // true = gespeichert
   
   @AppStorage("githubToken") private var token: String = ""
   @AppStorage("githubOwner") private var owner: String = ""
@@ -10,14 +11,14 @@ struct GitSettingsSheet: View {
   @State private var branch: String = "main"
   @State private var repoExists: Bool? = nil
   @State private var isChecking: Bool = true
-  @State private var isProcessing: Bool = false
   
-  @Environment(\.dismiss) var dismiss
+  @Environment(\.dismiss) private var dismiss
   
   var repoName: String { projectFolder.lastPathComponent }
   
   var body: some View {
     VStack(spacing: 20) {
+      
       if isChecking {
         ProgressView("Prüfe Repository...")
       }
@@ -30,11 +31,12 @@ struct GitSettingsSheet: View {
           
           HStack {
             Button("Abbrechen") {
+              onFinished?(false)
               dismiss()
             }
+            
             Button("Überschreiben") {
               saveSettings()
-              dismiss()
             }
             .bold()
           }
@@ -44,19 +46,20 @@ struct GitSettingsSheet: View {
       else {
         VStack(spacing: 12) {
           Toggle("Public Repository", isOn: $isPublic)
+          
           TextField("Branch", text: $branch)
             .textFieldStyle(.roundedBorder)
           
-          Button {
-            saveSettings()
-            dismiss()
-          } label: {
-            if isProcessing {
-              ProgressView()
-            } else {
-              Text("Repository erstellen & Push")
-                .bold()
+          HStack {
+            Button("Abbrechen") {
+              onFinished?(false)
+              dismiss()
             }
+            
+            Button("Repository erstellen & Push") {
+              saveSettings()
+            }
+            .bold()
           }
         }
       }
@@ -70,7 +73,11 @@ struct GitSettingsSheet: View {
   }
   
   private func checkIfRepoExists() async {
-    let gitService = GitHubService(token: token, repoOwner: owner, repoName: repoName)
+    let gitService = GitHubService(
+      token: token,
+      repoOwner: owner,
+      repoName: repoName
+    )
     repoExists = await gitService.repositoryExists()
     isChecking = false
   }
@@ -78,9 +85,13 @@ struct GitSettingsSheet: View {
   private func saveSettings() {
     let settings = ProjectSettings(isPublic: isPublic, branch: branch)
     let settingsURL = projectFolder.appendingPathComponent(".project.json")
+    
     if let data = try? JSONEncoder().encode(settings) {
       try? data.write(to: settingsURL, options: [.atomic])
     }
+    
+    onFinished?(true)
+    dismiss()
   }
 }
 

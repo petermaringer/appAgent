@@ -14,6 +14,33 @@ actor GitHubService {
     self.repoName = repoName
     self.branch = branch
   }
+  
+  func repositoryExists() async -> Bool {
+  guard !token.isEmpty, !repoOwner.isEmpty, !repoName.isEmpty else {
+    return false
+  }
+  
+  guard let url = URL(string: "https://api.github.com/repos/\(repoOwner)/\(repoName)") else {
+    return false
+  }
+  
+  var request = URLRequest(url: url)
+  request.httpMethod = "GET"
+  request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+  request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+  
+  do {
+    let (_, response) = try await URLSession.shared.data(for: request)
+    
+    if let httpResponse = response as? HTTPURLResponse {
+      return httpResponse.statusCode == 200
+    }
+  } catch {
+    return false
+  }
+  
+  return false
+}
 
   func pushProject(at folderURL: URL, statusUpdate: @escaping (String) -> Void) async {
     guard await checkOrCreateRepo(statusUpdate: statusUpdate) else { return }

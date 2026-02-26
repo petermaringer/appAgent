@@ -56,7 +56,7 @@ struct ContentView: View {
             showingNewProjectSheet = true
           } label: {
             Text("Neues Projekt")
-              .fontWeight(.bold)
+              .fontWeight(.semibold)
               //.font(.headline)
           }
           //.padding(.vertical)

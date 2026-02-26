@@ -8,10 +8,10 @@ struct ProjectDetailView: View {
   @State private var statusMessage: String = ""
   
   @AppStorage("githubToken") private var token: String = ""
-@AppStorage("githubOwner") private var owner: String = ""
-//@AppStorage("githubRepo") private var repo: String = ""
-
-
+  @AppStorage("githubOwner") private var owner: String = ""
+  //@AppStorage("githubRepo") private var repo: String = ""
+  
+  @State private var showingGitSheet: Bool = false
   
   // Neuer Wrapper für SwiftUI Sheet
   struct FileSheetItem: Identifiable {
@@ -72,18 +72,29 @@ struct ProjectDetailView: View {
         }
         .padding(.trailing)
         
-       Button {
-  Task {
-    let gitService = GitHubService(token: token, repoOwner: owner, repoName: project.projectName)
-    await gitService.pushProject(at: project.projectFolder) { status in
-      statusMessage = status
-    }
-  }
-} label: {
-  Text("GitHub Push").bold()
-}
-  .padding(.trailing)
-        
+        Button {
+          gitPush()
+          /*Task {
+            let settingsURL = project.projectFolder.appendingPathComponent(".project.json")
+            if FileManager.default.fileExists(atPath: settingsURL.path) {
+              let gitService = GitHubService(token: token, repoOwner: owner, repoName: project.projectName)
+              await gitService.pushProject(at: project.projectFolder) { status in
+                statusMessage = status
+              }
+            } else {
+              showingGitSheet = true
+            }
+          }*/
+          /*Task {
+            let gitService = GitHubService(token: token, repoOwner: owner, repoName: project.projectName)
+            await gitService.pushProject(at: project.projectFolder) { status in
+              statusMessage = status
+            }
+          }*/
+        } label: {
+          Text("GitHub Push").bold()
+        }
+        .padding(.trailing)
       }
       .padding(.horizontal)
       
@@ -112,6 +123,12 @@ struct ProjectDetailView: View {
     .sheet(item: $sheetItem) { item in
       FileEditorView(fileURL: item.url)
     }
+    .sheet(isPresented: $showingGitSheet) {
+      GitSettingsSheet(projectFolder: project.projectFolder) {
+        showingGitSheet = false
+        gitPush()
+      }
+    }
   }
   
   func generateProject() async {
@@ -132,4 +149,36 @@ struct ProjectDetailView: View {
     
     isProcessing = false
   }
+  
+func gitPush() {
+  let settingsURL = project.projectFolder.appendingPathComponent(".project.json")
+  
+  if FileManager.default.fileExists(atPath: settingsURL.path) {
+    // Settings existieren → Push starten
+    if let data = try? Data(contentsOf: settingsURL),
+       let settings = try? JSONDecoder().decode(ProjectSettings.self, from: data) {
+      Task {
+        /*let gitService = GitHubService(
+          token: token,
+          repoOwner: owner,
+          repoName: project.projectName,
+          isPublic: settings.isPublic,
+          branch: settings.branch
+        )*/
+        let gitService = GitHubService(token: token, repoOwner: owner, repoName: project.projectName)
+        //await gitService.pushProject(at: project.projectFolder) { _ in }
+        await gitService.pushProject(at: project.projectFolder) { status in
+          statusMessage = status
+        }
+      }
+    } else {
+      // Datei beschädigt → Sheet erneut öffnen
+      showingGitSheet = true
+    }
+  } else {
+    // Settings existieren noch nicht → Sheet öffnen
+    showingGitSheet = true
+  }
+}
+  
 }

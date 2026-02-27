@@ -58,7 +58,9 @@ struct GitSectionView: View {
     }
   }
   
+  @ViewBuilder
   private var statusSection: some View {
+    //VStack {
     switch status {
       case .missingCredentials:
         VStack {
@@ -74,6 +76,7 @@ struct GitSectionView: View {
             .foregroundColor(.blue)
         }
     }
+    //}
   }
   
   private var actionSection: some View {

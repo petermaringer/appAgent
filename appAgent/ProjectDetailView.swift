@@ -105,6 +105,9 @@ struct ProjectDetailView: View {
           .padding(.horizontal)
       }
       
+      GitSectionView(project: project)
+        .padding(.horizontal)
+      
       // FileListView flexibel
       FileListView(projectFolder: project.projectFolder)
         .frame(maxHeight: .infinity)

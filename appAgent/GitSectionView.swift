@@ -28,16 +28,18 @@ struct GitSectionView: View {
   @AppStorage("githubOwner") private var owner: String = ""
   
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
+    VStack(alignment: .center, spacing: 12) {
       Text("GitHub")
         .font(.headline)
       Button("GitHub Push") {
         startPush()
       }
+      .buttonStyle(.borderedProminent)
       .disabled(isBusy)
       statusSection
       actionSection
     }
+    .frame(maxWidth: .infinity)
     .padding()
     .background(Color.gray.opacity(0.1))
     .cornerRadius(12)
@@ -91,10 +93,12 @@ struct GitSectionView: View {
           Button("App-Settings öffnen") {
             showingAppSettings = true
           }
+          .buttonStyle(.bordered)
         case .needsGitSettings:
           Button("Git-Settings öffnen") {
             showingGitSettings = true
           }
+          .buttonStyle(.bordered)
         default:
           EmptyView()
       }

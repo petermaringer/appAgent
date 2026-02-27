@@ -62,7 +62,7 @@ struct GitSectionView: View {
   
   @ViewBuilder
   private var statusSection: some View {
-    //VStack {
+    VStack {
     switch status {
       case .idle:
         EmptyView()
@@ -77,13 +77,14 @@ struct GitSectionView: View {
         HStack {
           ProgressView()
           Text("Prüfe Repository…")
-            .foregroundColor(.blue)
+            //.foregroundColor(.blue)
         }
       default:
         Text("⚠️ Unbehandelter Status: \(status)")
           .foregroundColor(.orange)
     }
-    //}
+    }
+    .foregroundColor(.blue)
   }
   
   private var actionSection: some View {

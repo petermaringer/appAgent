@@ -109,6 +109,7 @@ struct GitSectionView: View {
       }
     }
     .foregroundColor(.blue)
+    .multilineTextAlignment(.center)
   }
   
   private var actionSection: some View {

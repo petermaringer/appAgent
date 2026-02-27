@@ -24,6 +24,9 @@ struct GitSectionView: View {
   @State private var showingAppSettings: Bool = false
   @State private var showingGitSettings: Bool = false
   
+  final class GitShared { var overwriteConfirmed: Bool = false }
+  @State private var gitShared = GitShared()
+  
   @AppStorage("githubToken") private var token: String = ""
   @AppStorage("githubOwner") private var owner: String = ""
   
@@ -67,7 +70,7 @@ struct GitSectionView: View {
           EmptyView()
         case .missingCredentials:
           VStack {
-            Text("⚙️ GitHub-Credentials erforderlich")
+            Text("⚙️ GitHub-Konfiguration erforderlich")
             Text("Bitte Token und Owner in den App-Einstellungen angeben.")
               .font(.caption)
           }
@@ -110,6 +113,7 @@ struct GitSectionView: View {
     }
     .foregroundColor(.blue)
     .multilineTextAlignment(.center)
+    .padding(.horizontal)
   }
   
   private var actionSection: some View {
@@ -120,12 +124,13 @@ struct GitSectionView: View {
             showingAppSettings = true
           }
         case .needsGitSettings:
-          Button("Git-Settings öffnen") {
+          Button("Repo-Settings öffnen") {
             showingGitSettings = true
           }
         case .repoExists:
           Button("Repository überschreiben") {
-            // Hier kannst du später einen Force-Push starten
+            gitShared.overwriteConfirmed = true
+            startPush()
           }
         default:
           EmptyView()

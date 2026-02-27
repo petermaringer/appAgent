@@ -46,7 +46,8 @@ struct ProjectDetailView: View {
       // TextEditor nimmt flexiblen Platz
       TextEditor(text: $userPrompt)
         .border(Color.gray, width: 1)
-        .frame(minHeight: 150, maxHeight: 250)
+        //.frame(minHeight: 150, maxHeight: 250)
+        .frame(height: 150)
         .padding(.horizontal)
       
       // Buttons

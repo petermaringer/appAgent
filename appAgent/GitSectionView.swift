@@ -29,9 +29,9 @@ struct GitSectionView: View {
   
   var body: some View {
     VStack(alignment: .center, spacing: 12) {
-      Text("GitHub")
+      Text("GitHub-Integration")
         .font(.headline)
-      Button("GitHub Push") {
+      Button("Push auf GitHub") {
         startPush()
       }
       .buttonStyle(.borderedProminent)
@@ -42,7 +42,7 @@ struct GitSectionView: View {
     .frame(maxWidth: .infinity)
     .padding()
     .background(Color.gray.opacity(0.1))
-    .cornerRadius(12)
+    .cornerRadius(18)
     .sheet(isPresented: $showingAppSettings) {
       SettingsView()
     }

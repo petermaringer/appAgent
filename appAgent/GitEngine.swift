@@ -4,8 +4,12 @@ actor GitEngine {
   private(set) var overwriteConfirmed = false
   func setOverwriteConfirmed(_ value: Bool) { overwriteConfirmed = value }
   
-  private let project: ProjectEngine
-  init(project: ProjectEngine) { self.project = project }
+  /*private let project: ProjectEngine
+  init(project: ProjectEngine) { self.project = project }*/
+  static var currentProject: ProjectEngine!
+  private var project: ProjectEngine {
+    GitEngine.currentProject
+  }
   
   func performPush() async -> GitStatus {
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""

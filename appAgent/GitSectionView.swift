@@ -111,7 +111,7 @@ struct GitSectionView: View {
             Text("Prüfe Repository…")
           }
         default:
-          Text("⚠️ Unbehandelter Status: \(status)")
+          Text("⚠️ Unbehandelter Status: \(String(describing: status))")
             .foregroundColor(.orange)
       }
     }

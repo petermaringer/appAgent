@@ -62,6 +62,8 @@ struct GitSectionView: View {
   private var statusSection: some View {
     //VStack {
     switch status {
+      case .idle:
+        EmptyView()
       case .missingCredentials:
         VStack {
           Text("⚠️ Fehlende GitHub-Credentials")
@@ -75,6 +77,9 @@ struct GitSectionView: View {
           Text("Prüfe Repository…")
             .foregroundColor(.blue)
         }
+      default:
+        Text("⚠️ Unbehandelter Status: \(status)")
+          .foregroundColor(.orange)
     }
     //}
   }

@@ -40,6 +40,7 @@ struct GitSectionView: View {
         Task {
           status = await engine.performPush()
         }
+      }
       .buttonStyle(.borderedProminent)
       .disabled(isBusy)
       statusSection
@@ -137,6 +138,7 @@ struct GitSectionView: View {
             Task {
               await engine.overwriteConfirmed = true
               status = await engine.performPush()
+            }
           }
         default:
           EmptyView()

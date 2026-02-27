@@ -28,8 +28,8 @@ struct GitSectionView: View {
   @State private var gitShared = GitShared()*/
   private let engine = GitEngine()
   
-  @AppStorage("githubToken") private var token: String = ""
-  @AppStorage("githubOwner") private var owner: String = ""
+  /*@AppStorage("githubToken") private var token: String = ""
+  @AppStorage("githubOwner") private var owner: String = ""*/
   
   var body: some View {
     VStack(alignment: .center, spacing: 12) {
@@ -148,7 +148,7 @@ struct GitSectionView: View {
     .buttonStyle(.bordered)
   }
   
-  private func randomStatus() -> GitStatus {
+  /*private func randomStatus() -> GitStatus {
     let allCases: [GitStatus] = [.idle, .unauthorized, .forbidden, .repoExists, .needsGitSettings, .checkingRepo, .creatingRepo, .pushing(progress: "42%"), .success, .error("Testfehler")]
     return allCases.randomElement()!
   }
@@ -160,6 +160,6 @@ struct GitSectionView: View {
     }
     //status = .checkingRepo
     status = randomStatus()
-  }
+  }*/
   
 }

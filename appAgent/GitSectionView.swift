@@ -60,7 +60,7 @@ struct GitSectionView: View {
     }
   }
   
-  @ViewBuilder
+  //@ViewBuilder
   private var statusSection: some View {
     VStack {
     switch status {
@@ -94,16 +94,17 @@ struct GitSectionView: View {
           Button("App-Settings öffnen") {
             showingAppSettings = true
           }
-          .buttonStyle(.bordered)
+          //.buttonStyle(.bordered)
         case .needsGitSettings:
           Button("Git-Settings öffnen") {
             showingGitSettings = true
           }
-          .buttonStyle(.bordered)
+          //.buttonStyle(.bordered)
         default:
           EmptyView()
       }
     }
+    .buttonStyle(.bordered)
   }
   
   private func startPush() {

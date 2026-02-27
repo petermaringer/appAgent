@@ -136,7 +136,8 @@ struct GitSectionView: View {
             //gitShared.overwriteConfirmed = true
             //startPush()
             Task {
-              await engine.overwriteConfirmed = true
+              //await engine.overwriteConfirmed = true
+              await engine.setOverwriteConfirmed(true)
               status = await engine.performPush()
             }
           }

@@ -3,7 +3,12 @@ import Foundation
 actor GitEngine {
   // Zugriff auf GitShared aus der View
   //var gitShared: GitSectionView.GitShared?
-  var overwriteConfirmed = false
+  //var overwriteConfirmed = false
+  private(set) var overwriteConfirmed = false
+  
+func setOverwriteConfirmed(_ value: Bool) {
+  overwriteConfirmed = value
+}
 
   func performPush() async -> GitStatus {
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""

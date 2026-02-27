@@ -24,8 +24,9 @@ struct GitSectionView: View {
   @State private var showingAppSettings: Bool = false
   @State private var showingGitSettings: Bool = false
   
-  final class GitShared { var overwriteConfirmed: Bool = false }
-  @State private var gitShared = GitShared()
+  /*final class GitShared { var overwriteConfirmed: Bool = false }
+  @State private var gitShared = GitShared()*/
+  private let engine = GitEngine()
   
   @AppStorage("githubToken") private var token: String = ""
   @AppStorage("githubOwner") private var owner: String = ""
@@ -35,8 +36,10 @@ struct GitSectionView: View {
       Text("GitHub-Integration")
         .font(.headline)
       Button("Push auf GitHub") {
-        startPush()
-      }
+        //startPush()
+        Task {
+          status = await engine.performPush()
+        }
       .buttonStyle(.borderedProminent)
       .disabled(isBusy)
       statusSection
@@ -129,8 +132,11 @@ struct GitSectionView: View {
           }
         case .repoExists:
           Button("Repository überschreiben") {
-            gitShared.overwriteConfirmed = true
-            startPush()
+            //gitShared.overwriteConfirmed = true
+            //startPush()
+            Task {
+              await engine.overwriteConfirmed = true
+              status = await engine.performPush()
           }
         default:
           EmptyView()

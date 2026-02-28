@@ -27,6 +27,7 @@ actor GitEngine {
   
   func performPush() async -> GitStatus {
     
+    status = .idle
     status = .checkingRepo
     
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""

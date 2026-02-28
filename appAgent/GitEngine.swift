@@ -25,7 +25,8 @@ actor GitEngine {
     //didSet { onStatusChange?(status) }
     didSet {
       Task { @MainActor in      // <--- Hier ist der MainActor wichtig
-        onStatusChange?(status)
+        //onStatusChange?(status)
+        await onStatusChange?(status)
       }
     }
   }

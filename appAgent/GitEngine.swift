@@ -16,6 +16,30 @@ actor GitEngine {
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""
     guard !token.isEmpty, !owner.isEmpty else { return .missingCredentials }
     
+    
+    var needsGitSettingsFlag = false
+    let projectURL = project.projectFolder.appendingPathComponent(".project.json")
+
+guard let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty else {
+    needsGitSettingsFlag = true
+}
+
+do {
+    if let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] {
+        guard let isPublic = json["isPublic"] as? Bool else {
+          needsGitSettingsFlag = true
+        }
+        guard let branch = json["branch"] as? String, !branch.isEmpty else {
+          needsGitSettingsFlag = true
+        }
+    } else {
+        return .error("Project-JSON ist ungültig")
+    }
+} catch {
+    return .error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)")
+}
+    
+    
     if let url = URL(string: "https://api.github.com/user") {
     var request = URLRequest(url: url)
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -54,11 +78,10 @@ actor GitEngine {
       if let http = response as? HTTPURLResponse {
         switch http.statusCode {
           case 200:
-            if !overwriteConfirmed { return .repoExists }
+            if !overwriteConfirmed && needsGitSettingsFlag { return .repoExists }
           case 401: return .unauthorized
           case 403: return .forbidden
           case 404: break
-          //case 404: return .needsGitSettings
           default: return .error("HTTP \(http.statusCode)")
         }
       }
@@ -66,17 +89,17 @@ actor GitEngine {
       return .error(error.localizedDescription)
     }
     
-    //if !overwriteConfirmed { return .repoExists }
+    if needsGitSettingsFlag { return .needsGitSettings }
     
     /*let projectURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
       .first?.appendingPathComponent("project.json")
     guard let projectData = try? Data(contentsOf: projectURL ?? URL(fileURLWithPath: "")), !projectData.isEmpty else {
       return .needsGitSettings
     }*/
-    let projectURL = project.projectFolder.appendingPathComponent(".project.json")
+    /*let projectURL = project.projectFolder.appendingPathComponent(".project.json")
     guard let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty else {
       return .needsGitSettings
-    }
+    }*/
     
     return .success
     

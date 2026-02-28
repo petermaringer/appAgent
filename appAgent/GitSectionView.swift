@@ -2,55 +2,40 @@ import SwiftUI
 
 enum GitStatus: Equatable {
   case idle
-  // Setup-Probleme
+  //Setup-Probleme
   case missingCredentials
   case unauthorized
   case forbidden
   case repoExists
   case needsGitSettings
-  // Laufend
+  //Laufend
   case checkingRepo
   case creatingRepo
   case pushing(progress: String)
-  // Abschluss
+  //Abschluss
   case success
   case error(String)
 }
 
 struct GitSectionView: View {
   @ObservedObject var project: ProjectEngine
-  //@State private var status: GitStatus = .idle
-  //@State private var statusMessage: String = ""
   @State private var showingAppSettings: Bool = false
   @State private var showingGitSettings: Bool = false
   
-  /*final class GitShared { var overwriteConfirmed: Bool = false }
-  @State private var gitShared = GitShared()*/
-  //private let engine = GitEngine()
   //private let engine = GitEngine(project: project)
-  //private lazy var engine = GitEngine(project: project)
-  //private let engine: GitEngine
   @State private var engine: GitEngine
-
-init(project: ProjectEngine) {
-  self.project = project
-  self.engine = GitEngine(project: project)
-  /*self.engine.onStatusChange = { newStatus in
-    status = newStatus
-  }*/
-}
   
-  /*@AppStorage("githubToken") private var token: String = ""
-  @AppStorage("githubOwner") private var owner: String = ""*/
+  init(project: ProjectEngine) {
+    self.project = project
+    self.engine = GitEngine(project: project)
+  }
   
   var body: some View {
     VStack(alignment: .center, spacing: 12) {
       Text("GitHub-Integration")
         .font(.headline)
       Button("Push auf GitHub") {
-        //startPush()
         Task {
-          //status = await engine.performPush()
           await engine.performPush()
         }
       }
@@ -69,24 +54,13 @@ init(project: ProjectEngine) {
     .sheet(isPresented: $showingGitSettings) {
       GitSettingsSheet(projectFolder: project.projectFolder)
     }
-    /*.onAppear {
-      Task { @MainActor in
-        await engine.setOnStatusChange { newStatus in
-          status = newStatus
-        }
-      }
-      //engine.onStatusChange = { newStatus in
-        //status = newStatus
-      //}
-    }*/
+    //.onAppear {}
   }
   
   private var isBusy: Bool {
     switch engine.status {
-      case .checkingRepo, .creatingRepo, .pushing:
-        return true
-      default:
-        return false
+      case .checkingRepo, .creatingRepo, .pushing: return true
+      default: return false
     }
   }
   
@@ -135,7 +109,7 @@ init(project: ProjectEngine) {
           }
         default:
           Text("⚠️ Unbehandelter Status: \(String(describing: engine.status))")
-            .foregroundColor(.orange)
+            .foregroundColor(.purple)
       }
     }
     .foregroundColor(.blue)
@@ -156,34 +130,15 @@ init(project: ProjectEngine) {
           }
         case .repoExists:
           Button("Repository überschreiben") {
-            //gitShared.overwriteConfirmed = true
-            //startPush()
+            engine.setOverwriteConfirmed(true)
             Task {
-              //await engine.overwriteConfirmed = true
-              engine.setOverwriteConfirmed(true)
-              //status = await engine.performPush()
               await engine.performPush()
             }
           }
-        default:
-          EmptyView()
+        default: EmptyView()
       }
     }
     .buttonStyle(.bordered)
   }
-  
-  /*private func randomStatus() -> GitStatus {
-    let allCases: [GitStatus] = [.idle, .unauthorized, .forbidden, .repoExists, .needsGitSettings, .checkingRepo, .creatingRepo, .pushing(progress: "42%"), .success, .error("Testfehler")]
-    return allCases.randomElement()!
-  }
-  
-  private func startPush() {
-    guard !token.isEmpty, !owner.isEmpty else {
-      status = .missingCredentials
-      return
-    }
-    //status = .checkingRepo
-    status = randomStatus()
-  }*/
   
 }

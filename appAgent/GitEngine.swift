@@ -11,33 +11,19 @@ actor GitEngine {
     GitEngine.currentProject
   }*/
   
+  var status: GitStatus = .idle {
+    didSet { onStatusChange?(status) }
+  }
+  var onStatusChange: ((GitStatus) -> Void)?
+  
   func performPush() async -> GitStatus {
+    
+    status = .checkingRepo
+    
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""
     guard !token.isEmpty, !owner.isEmpty else { return .missingCredentials }
     
-    
-    /*var needsGitSettingsFlag = false
-    let projectURL = project.projectFolder.appendingPathComponent(".project.json")
-
-guard let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty else {
-    needsGitSettingsFlag = true
-}
-
-do {
-    if let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] {
-        guard let isPublic = json["isPublic"] as? Bool else {
-          needsGitSettingsFlag = true
-        }
-        guard let branch = json["branch"] as? String, !branch.isEmpty else {
-          needsGitSettingsFlag = true
-        }
-    } else {
-        return .error("Project-JSON ist ungültig")
-    }
-} catch {
-    return .error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)")
-}*/
     var needsGitSettingsFlag = false
 let projectURL = project.projectFolder.appendingPathComponent(".project.json")
 

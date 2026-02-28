@@ -34,6 +34,9 @@ struct GitSectionView: View {
 init(project: ProjectEngine) {
   self.project = project
   self.engine = GitEngine(project: project)
+  self.engine.onStatusChange = { newStatus in
+    status = newStatus
+  }
 }
   
   /*@AppStorage("githubToken") private var token: String = ""

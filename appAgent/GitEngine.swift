@@ -44,8 +44,9 @@ actor GitEngine {
   func performPush() async {
     
     //status = .idle
-    await Task.yield()
+   
     status = .checkingRepo
+     await Task.yield()
    //setStatus(.checkingRepo)
    /*let callback = onStatusChange
 await MainActor.run {

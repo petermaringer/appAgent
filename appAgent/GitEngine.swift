@@ -18,7 +18,7 @@ actor GitEngine {
     
     if let url = URL(string: "https://api.github.com/user") {
     var request = URLRequest(url: url)
-    request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.httpMethod = "GET"
     do {
       let (data, response) = try await URLSession.shared.data(for: request)
@@ -29,7 +29,7 @@ actor GitEngine {
           if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
              let login = json["login"] as? String,
              login.lowercased() != owner.lowercased() {
-            return .unauthorized // Token stimmt nicht mit Owner überein
+            return .forbidden // Token stimmt nicht mit Owner überein
           }
         case 401: return .unauthorized
         case 403: return .forbidden
@@ -46,7 +46,7 @@ actor GitEngine {
     
     guard let url = URL(string: "https://api.github.com/repos/\(owner)/\(repoName)") else { return .error("Ungültige URL") }
     var request = URLRequest(url: url)
-    request.setValue("token \(token)", forHTTPHeaderField: "Authorization")
+    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.httpMethod = "GET"
     
     do {
@@ -57,6 +57,7 @@ actor GitEngine {
             if !overwriteConfirmed { return .repoExists }
           case 401: return .unauthorized
           case 403: return .forbidden
+          case 404: break
           //case 404: return .needsGitSettings
           default: return .error("HTTP \(http.statusCode)")
         }

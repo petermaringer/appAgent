@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum GitStatus {
+enum GitStatus: Equatable {
   case idle
   // Setup-Probleme
   case missingCredentials

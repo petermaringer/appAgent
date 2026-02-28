@@ -17,7 +17,7 @@ actor GitEngine {
     guard !token.isEmpty, !owner.isEmpty else { return .missingCredentials }
     
     
-    var needsGitSettingsFlag = false
+    /*var needsGitSettingsFlag = false
     let projectURL = project.projectFolder.appendingPathComponent(".project.json")
 
 guard let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty else {
@@ -37,8 +37,23 @@ do {
     }
 } catch {
     return .error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)")
+}*/
+    var needsGitSettingsFlag = false
+let projectURL = project.projectFolder.appendingPathComponent(".project.json")
+
+do {
+  let projectData = try? Data(contentsOf: projectURL)
+  if projectData == nil || projectData!.isEmpty {
+    needsGitSettingsFlag = true
+  } else {
+    let json = try JSONSerialization.jsonObject(with: projectData!) as! [String: Any]
+    if json["isPublic"] as? Bool == nil || (json["branch"] as? String ?? "").isEmpty {
+      needsGitSettingsFlag = true
+    }
+  }
+} catch {
+  return .error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)")
 }
-    
     
     if let url = URL(string: "https://api.github.com/user") {
     var request = URLRequest(url: url)

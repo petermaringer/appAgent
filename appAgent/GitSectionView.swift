@@ -68,9 +68,14 @@ init(project: ProjectEngine) {
       GitSettingsSheet(projectFolder: project.projectFolder)
     }
     .onAppear {
-      engine.onStatusChange = { newStatus in
-        status = newStatus
+      Task { @MainActor in
+        await engine.setOnStatusChange { newStatus in
+          status = newStatus
+        }
       }
+      /*engine.onStatusChange = { newStatus in
+        status = newStatus
+      }*/
     }
   }
   

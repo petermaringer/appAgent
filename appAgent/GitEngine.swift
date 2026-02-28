@@ -11,10 +11,19 @@ actor GitEngine {
     GitEngine.currentProject
   }*/
   
+  /*var status: GitStatus = .idle {
+    didSet { onStatusChange?(status) }
+  }
+  var onStatusChange: ((GitStatus) -> Void)?*/
+  var onStatusChange: ((GitStatus) -> Void)?
+
+  func setOnStatusChange(_ callback: @escaping (GitStatus) -> Void) {
+    onStatusChange = callback
+  }
+
   var status: GitStatus = .idle {
     didSet { onStatusChange?(status) }
   }
-  var onStatusChange: ((GitStatus) -> Void)?
   
   func performPush() async -> GitStatus {
     

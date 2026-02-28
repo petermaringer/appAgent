@@ -88,6 +88,7 @@ do {
     var request = URLRequest(url: url)
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.httpMethod = "GET"
+    request.cachePolicy = .reloadIgnoringLocalCacheData
     do {
       let (data, response) = try await URLSession.shared.data(for: request)
       guard let http = response as? HTTPURLResponse else {

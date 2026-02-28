@@ -50,7 +50,7 @@ class GitEngine {
     //status = .idle
    
     status = .checkingRepo
-     //await Task.yield()
+     await Task.yield()
    //setStatus(.checkingRepo)
    /*let callback = onStatusChange
 await MainActor.run {

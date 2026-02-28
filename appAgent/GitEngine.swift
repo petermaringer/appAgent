@@ -40,7 +40,7 @@ actor GitEngine {
 await MainActor.run {
     callback?(.checkingRepo)
 }*/
-//try? await Task.sleep(nanoseconds: 200_000_000)
+try? await Task.sleep(nanoseconds: 200_000_000)
     
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""

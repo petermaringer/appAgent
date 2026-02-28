@@ -31,19 +31,24 @@ actor GitEngine {
     }
   }
   
-  func performPush() async -> GitStatus {
+  //func performPush() async -> GitStatus {
+  func performPush() async {
     
-    /*status = .idle
-    status = .checkingRepo*/
-   let callback = onStatusChange
+    //status = .idle
+    status = .checkingRepo
+   /*let callback = onStatusChange
 await MainActor.run {
     callback?(.checkingRepo)
-}
-try? await Task.sleep(nanoseconds: 200_000_000)
+}*/
+//try? await Task.sleep(nanoseconds: 200_000_000)
     
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""
-    guard !token.isEmpty, !owner.isEmpty else { return .missingCredentials }
+    guard !token.isEmpty, !owner.isEmpty else {
+    //return .missingCredentials
+    status = .missingCredentials
+      return
+    }
     
     var needsGitSettingsFlag = false
 let projectURL = project.projectFolder.appendingPathComponent(".project.json")
@@ -59,7 +64,8 @@ do {
     }
   }
 } catch {
-  return .error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)")
+  status = .error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)")
+  return
 }
     
     if let url = URL(string: "https://api.github.com/user") {
@@ -68,29 +74,41 @@ do {
     request.httpMethod = "GET"
     do {
       let (data, response) = try await URLSession.shared.data(for: request)
-      guard let http = response as? HTTPURLResponse else { return .error("Keine Antwort") }
+      guard let http = response as? HTTPURLResponse else {
+      status = .error("Keine Antwort")
+      return
+      }
       switch http.statusCode {
         case 200:
           // Token ist gültig → check Owner
           if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
              let login = json["login"] as? String,
              login.lowercased() != owner.lowercased() {
-            return .forbidden // Token stimmt nicht mit Owner überein
+            status = .forbidden // Token stimmt nicht mit Owner überein
+            return
           }
-        case 401: return .unauthorized
-        case 403: return .forbidden
-        default: return .error("HTTP \(http.statusCode)")
+        case 401: status = .unauthorized
+        return
+        case 403: status = .forbidden
+        return
+        default: status = .error("HTTP \(http.statusCode)")
+        return
       }
     } catch {
-      return .error(error.localizedDescription)
+      status = .error(error.localizedDescription)
+      return
     }
   } else {
-    return .error("Ungültige User-URL")
+    status = .error("Ungültige User-URL")
+    return
   }
     
     let repoName = project.projectName
     
-    guard let url = URL(string: "https://api.github.com/repos/\(owner)/\(repoName)") else { return .error("Ungültige URL") }
+    guard let url = URL(string: "https://api.github.com/repos/\(owner)/\(repoName)") else {
+    status = .error("Ungültige URL")
+    return
+    }
     var request = URLRequest(url: url)
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.httpMethod = "GET"
@@ -100,18 +118,27 @@ do {
       if let http = response as? HTTPURLResponse {
         switch http.statusCode {
           case 200:
-            if !overwriteConfirmed && needsGitSettingsFlag { return .repoExists }
-          case 401: return .unauthorized
-          case 403: return .forbidden
+            if !overwriteConfirmed && needsGitSettingsFlag {
+            status = .repoExists
+            return
+            }
+          case 401: status = .unauthorized
+          return
+          case 403: status = .forbidden
+          return
           case 404: break
-          default: return .error("HTTP \(http.statusCode)")
+          default: status = .error("HTTP \(http.statusCode)")
+          return
         }
       }
     } catch {
-      return .error(error.localizedDescription)
+      status = .error(error.localizedDescription)
+      return
     }
     
-    if needsGitSettingsFlag { return .needsGitSettings }
+    if needsGitSettingsFlag { status = .needsGitSettings
+    return
+    }
     
     /*let projectURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
       .first?.appendingPathComponent("project.json")
@@ -123,7 +150,7 @@ do {
       return .needsGitSettings
     }*/
     
-    return .success
+    status = .success
     
   }
 }

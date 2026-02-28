@@ -49,7 +49,8 @@ init(project: ProjectEngine) {
       Button("Push auf GitHub") {
         //startPush()
         Task {
-          status = await engine.performPush()
+          //status = await engine.performPush()
+          await engine.performPush()
         }
       }
       .buttonStyle(.borderedProminent)
@@ -159,7 +160,8 @@ init(project: ProjectEngine) {
             Task {
               //await engine.overwriteConfirmed = true
               await engine.setOverwriteConfirmed(true)
-              status = await engine.performPush()
+              //status = await engine.performPush()
+              await engine.performPush()
             }
           }
         default:

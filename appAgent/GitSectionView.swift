@@ -26,7 +26,8 @@ struct GitSectionView: View {
   
   /*final class GitShared { var overwriteConfirmed: Bool = false }
   @State private var gitShared = GitShared()*/
-  private let engine = GitEngine()
+  //private let engine = GitEngine()
+  private let engine = GitEngine(project: project)
   
   /*@AppStorage("githubToken") private var token: String = ""
   @AppStorage("githubOwner") private var owner: String = ""*/

@@ -22,7 +22,12 @@ actor GitEngine {
   }
 
   var status: GitStatus = .idle {
-    didSet { onStatusChange?(status) }
+    //didSet { onStatusChange?(status) }
+    didSet {
+      Task { @MainActor in      // <--- Hier ist der MainActor wichtig
+        onStatusChange?(status)
+      }
+    }
   }
   
   func performPush() async -> GitStatus {

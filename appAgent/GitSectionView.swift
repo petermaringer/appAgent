@@ -28,7 +28,13 @@ struct GitSectionView: View {
   @State private var gitShared = GitShared()*/
   //private let engine = GitEngine()
   //private let engine = GitEngine(project: project)
-  private lazy var engine = GitEngine(project: project)
+  //private lazy var engine = GitEngine(project: project)
+  private let engine: GitEngine
+
+init(project: ProjectEngine) {
+  self.project = project
+  self.engine = GitEngine(project: project)
+}
   
   /*@AppStorage("githubToken") private var token: String = ""
   @AppStorage("githubOwner") private var owner: String = ""*/

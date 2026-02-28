@@ -19,7 +19,7 @@ enum GitStatus {
 
 struct GitSectionView: View {
   @ObservedObject var project: ProjectEngine
-  @State private var status: GitStatus = .idle
+  //@State private var status: GitStatus = .idle
   //@State private var statusMessage: String = ""
   @State private var showingAppSettings: Bool = false
   @State private var showingGitSettings: Bool = false
@@ -29,7 +29,8 @@ struct GitSectionView: View {
   //private let engine = GitEngine()
   //private let engine = GitEngine(project: project)
   //private lazy var engine = GitEngine(project: project)
-  private let engine: GitEngine
+  //private let engine: GitEngine
+  @State private var engine: GitEngine
 
 init(project: ProjectEngine) {
   self.project = project
@@ -68,20 +69,20 @@ init(project: ProjectEngine) {
     .sheet(isPresented: $showingGitSettings) {
       GitSettingsSheet(projectFolder: project.projectFolder)
     }
-    .onAppear {
+    /*.onAppear {
       Task { @MainActor in
         await engine.setOnStatusChange { newStatus in
           status = newStatus
         }
       }
-      /*engine.onStatusChange = { newStatus in
-        status = newStatus
-      }*/
-    }
+      //engine.onStatusChange = { newStatus in
+        //status = newStatus
+      //}
+    }*/
   }
   
   private var isBusy: Bool {
-    switch status {
+    switch engine.status {
       case .checkingRepo, .creatingRepo, .pushing:
         return true
       default:
@@ -91,7 +92,7 @@ init(project: ProjectEngine) {
   
   private var statusSection: some View {
     VStack {
-      switch status {
+      switch engine.status {
         case .idle:
           EmptyView()
         case .missingCredentials:
@@ -133,7 +134,7 @@ init(project: ProjectEngine) {
             Text("Prüfe Repository…")
           }
         default:
-          Text("⚠️ Unbehandelter Status: \(String(describing: status))")
+          Text("⚠️ Unbehandelter Status: \(String(describing: engine.status))")
             .foregroundColor(.orange)
       }
     }
@@ -144,7 +145,7 @@ init(project: ProjectEngine) {
   
   private var actionSection: some View {
     VStack(alignment: .leading, spacing: 8) {
-      switch status {
+      switch engine.status {
         case .missingCredentials, .unauthorized, .forbidden:
           Button("App-Settings öffnen") {
             showingAppSettings = true
@@ -159,7 +160,7 @@ init(project: ProjectEngine) {
             //startPush()
             Task {
               //await engine.overwriteConfirmed = true
-              await engine.setOverwriteConfirmed(true)
+              engine.setOverwriteConfirmed(true)
               //status = await engine.performPush()
               await engine.performPush()
             }

@@ -1,6 +1,9 @@
 import Foundation
+import Observation
 
-actor GitEngine {
+//actor GitEngine {
+@Observable
+class GitEngine {
   private(set) var overwriteConfirmed = false
   func setOverwriteConfirmed(_ value: Bool) { overwriteConfirmed = value }
   
@@ -15,7 +18,7 @@ actor GitEngine {
     didSet { onStatusChange?(status) }
   }
   var onStatusChange: ((GitStatus) -> Void)?*/
-  var onStatusChange: ((GitStatus) -> Void)?
+  /*var onStatusChange: ((GitStatus) -> Void)?
 
   func setOnStatusChange(_ callback: @escaping (GitStatus) -> Void) {
     onStatusChange = callback
@@ -28,9 +31,9 @@ actor GitEngine {
       await onStatusChange?(newStatus)
     }
   }
-  // --- ENDE HINZUFÜGEN ---
+  // --- ENDE HINZUFÜGEN ---*/
 
-  var status: GitStatus = .idle {
+  /*var status: GitStatus = .idle {
     //didSet { onStatusChange?(status) }
     didSet {
       Task { @MainActor in      // <--- Hier ist der MainActor wichtig
@@ -38,7 +41,8 @@ actor GitEngine {
         await onStatusChange?(status)
       }
     }
-  }
+  }*/
+  var status: GitStatus = .idle
   
   //func performPush() async -> GitStatus {
   func performPush() async {
@@ -52,7 +56,7 @@ actor GitEngine {
 await MainActor.run {
     callback?(.checkingRepo)
 }*/
-try? await Task.sleep(nanoseconds: 50_000_000)
+//try? await Task.sleep(nanoseconds: 50_000_000)
     
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""

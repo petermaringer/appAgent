@@ -33,8 +33,11 @@ actor GitEngine {
   
   func performPush() async -> GitStatus {
     
-    status = .idle
-    status = .checkingRepo
+    /*status = .idle
+    status = .checkingRepo*/
+    await MainActor.run {
+        onStatusChange?(.checkingRepo)
+    }
     
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""

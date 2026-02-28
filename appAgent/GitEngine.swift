@@ -56,7 +56,7 @@ class GitEngine {
 await MainActor.run {
     callback?(.checkingRepo)
 }*/
-try? await Task.sleep(nanoseconds: 150_000_000)
+//try? await Task.sleep(nanoseconds: 150_000_000)
     
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""
@@ -128,6 +128,7 @@ do {
     var request = URLRequest(url: url)
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.httpMethod = "GET"
+    request.cachePolicy = .reloadIgnoringLocalCacheData
     
     do {
       let (_, response) = try await URLSession.shared.data(for: request)

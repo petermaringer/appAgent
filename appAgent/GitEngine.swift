@@ -35,9 +35,10 @@ actor GitEngine {
     
     /*status = .idle
     status = .checkingRepo*/
-    await MainActor.run {
-        onStatusChange?(.checkingRepo)
-    }
+   let callback = onStatusChange
+await MainActor.run {
+    callback?(.checkingRepo)
+}
     
     let token = UserDefaults.standard.string(forKey: "githubToken") ?? ""
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""

@@ -20,6 +20,15 @@ actor GitEngine {
   func setOnStatusChange(_ callback: @escaping (GitStatus) -> Void) {
     onStatusChange = callback
   }
+  
+    // --- HIER HINZUFÜGEN ---
+  func setStatus(_ newStatus: GitStatus) {
+    status = newStatus
+    Task { @MainActor in
+      await onStatusChange?(newStatus)
+    }
+  }
+  // --- ENDE HINZUFÜGEN ---
 
   var status: GitStatus = .idle {
     //didSet { onStatusChange?(status) }
@@ -36,10 +45,7 @@ actor GitEngine {
     
     //status = .idle
     //status = .checkingRepo
-    // statt Sleep
-await MainActor.run {
-  status = .checkingRepo
-}
+   setStatus(.checkingRepo)
    /*let callback = onStatusChange
 await MainActor.run {
     callback?(.checkingRepo)

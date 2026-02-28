@@ -32,6 +32,15 @@ class GitEngine {
     }
   }
   // --- ENDE HINZUFÜGEN ---*/
+  
+  func setStatus(_ newStatus: GitStatus) {
+  Task { @MainActor in
+    if newStatus == .missingCredentials || newStatus.isImmediateError {
+      try? await Task.sleep(nanoseconds: 200_000_000)
+    }
+    status = newStatus
+  }
+}
 
   /*var status: GitStatus = .idle {
     //didSet { onStatusChange?(status) }
@@ -62,7 +71,8 @@ await MainActor.run {
     let owner = UserDefaults.standard.string(forKey: "githubOwner") ?? ""
     guard !token.isEmpty, !owner.isEmpty else {
     //return .missingCredentials
-    status = .missingCredentials
+    //status = .missingCredentials
+    setStatus(.missingCredentials)
       return
     }
     
@@ -170,5 +180,16 @@ do {
     
     status = .success
     
+  }
+}
+
+extension GitStatus {
+  var isImmediateError: Bool {
+    switch self {
+      case .error(_):
+        return true
+      default:
+        return false
+    }
   }
 }

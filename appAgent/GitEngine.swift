@@ -115,7 +115,8 @@ class GitEngine {
 
   // Aufruf 2: Repo
   let repoName = project.projectName
-  if let (repoData, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
+  //if let (repoData, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
+  if let (_, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
     switch repoHTTP.statusCode {
       case 200:
         if !overwriteConfirmed && needsGitSettingsFlag {

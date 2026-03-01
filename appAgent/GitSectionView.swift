@@ -18,17 +18,16 @@ enum GitStatus: Equatable {
 }
 
 struct GitSectionView: View {
+  
   @ObservedObject var project: ProjectEngine
-  @State private var showingAppSettings: Bool = false
-  @State private var showingGitSettings: Bool = false
-  
-  //private let engine = GitEngine(project: project)
   @State private var engine: GitEngine
-  
   init(project: ProjectEngine) {
     self.project = project
     self.engine = GitEngine(project: project)
   }
+  
+  @State private var showingAppSettings: Bool = false
+  @State private var showingGitSettings: Bool = false
   
   var body: some View {
     VStack(alignment: .center, spacing: 12) {
@@ -54,7 +53,6 @@ struct GitSectionView: View {
     .sheet(isPresented: $showingGitSettings) {
       GitSettingsSheet(projectFolder: project.projectFolder)
     }
-    //.onAppear {}
   }
   
   private var isBusy: Bool {
@@ -64,8 +62,17 @@ struct GitSectionView: View {
     }
   }
   
+  private var statusColor: Color {
+    switch engine.status {
+      case .unauthorized, .forbidden, .error: return .red
+      case .repoExists: return .orange
+      case .success: return .green
+      default: return .blue
+    }
+  }
+  
   private var statusSection: some View {
-    VStack {
+    VStack(alignment: .center, spacing: 12) {
       switch engine.status {
         case .idle:
           EmptyView()
@@ -81,21 +88,21 @@ struct GitSectionView: View {
             Text("Der gespeicherte Token ist ungültig oder abgelaufen. Bitte in den App-Einstellungen überprüfen.")
               .font(.caption)
           }
-          .foregroundColor(.red)
+          //.foregroundColor(.red)
         case .forbidden:
           VStack {
             Text("⛔ Keine Berechtigung")
             Text("Der Token hat keine (ausreichenden) Rechte für dieses Repository. Bitte Token und Owner in den App-Einstellungen prüfen.")
               .font(.caption)
           }
-          .foregroundColor(.red)
+          //.foregroundColor(.red)
         case .repoExists:
           VStack {
             Text("⚠️ Repository existiert bereits")
             Text("Für dieses Projekt ist bereits ein GitHub-Repository vorhanden. Möchtest du es überschreiben?")
               .font(.caption)
           }
-          .foregroundColor(.orange)
+          //.foregroundColor(.orange)
         case .needsGitSettings:
           VStack {
             Text("⚙️ Repository-Konfiguration erforderlich")
@@ -112,13 +119,14 @@ struct GitSectionView: View {
             .foregroundColor(.purple)
       }
     }
-    .foregroundColor(.blue)
+    //.foregroundColor(.blue)
+    .foregroundColor(statusColor)
     .multilineTextAlignment(.center)
     .padding(.horizontal)
   }
   
   private var actionSection: some View {
-    VStack(alignment: .leading, spacing: 8) {
+    VStack(alignment: .center, spacing: 12) {
       switch engine.status {
         case .missingCredentials, .unauthorized, .forbidden:
           Button("App-Settings öffnen") {

@@ -24,6 +24,22 @@ class GitEngine {
   }
   
   ////
+  //private func checkNeedsGitSettings() -> Bool {
+    //func checkNeedsGitSettings() -> Bool {
+    private func checkNeedsGitSettings() -> Bool? {
+      let projectURL = project.projectFolder.appendingPathComponent(".project.json")
+      do {
+        if let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty,
+           let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] {
+          return json["isPublic"] as? Bool == nil || (json["branch"] as? String ?? "").isEmpty
+        }
+      } catch {
+        setStatus(.error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)"))
+        return nil
+      }
+      return true
+    }
+  
   //private func unwrapData(_ dataOpt: Data?, _ responseOpt: HTTPURLResponse?, _ errorOpt: String?) -> (Data, HTTPURLResponse)? {
   private func unwrapData(_ result: (Data?, HTTPURLResponse?, String?)) -> (Data, HTTPURLResponse)? {
     let (dataOpt, responseOpt, errorOpt) = result
@@ -65,23 +81,9 @@ class GitEngine {
       return
     }
     
-    //private func checkNeedsGitSettings() -> Bool {
-    //func checkNeedsGitSettings() -> Bool {
-    func checkNeedsGitSettings() -> Bool? {
-      let projectURL = project.projectFolder.appendingPathComponent(".project.json")
-      do {
-        if let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty,
-           let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] {
-          return json["isPublic"] as? Bool == nil || (json["branch"] as? String ?? "").isEmpty
-        }
-      } catch {
-        setStatus(.error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)"))
-        return nil
-      }
-      return true
-    }
+    
     //let needsGitSettingsFlag = checkNeedsGitSettings()
-    guard let needsGitSettingsFlag = checkNeedsGitSettings() else { return }
+    //guard let needsGitSettingsFlag = checkNeedsGitSettings() else { return }
     
     /*var needsGitSettingsFlag = false
     let projectURL = project.projectFolder.appendingPathComponent(".project.json")
@@ -116,7 +118,7 @@ class GitEngine {
       default: setStatus(.error("HTTP \(userHTTP.statusCode)")); return
     }
   //}
-
+  
   // Aufruf 2: Repo
   let repoName = project.projectName
   //if let (repoData, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
@@ -124,10 +126,16 @@ class GitEngine {
   guard let (_, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) else { return }
     switch repoHTTP.statusCode {
       case 200:
-        if !overwriteConfirmed && needsGitSettingsFlag {
+        guard let needsGitSettings = checkNeedsGitSettings() else { return }
+        if !overwriteConfirmed && needsGitSettings {
           setStatus(.repoExists)
           return
         }
+      /*case 200:
+        if !overwriteConfirmed && needsGitSettingsFlag {
+          setStatus(.repoExists)
+          return
+        }*/
       case 401: setStatus(.unauthorized); return
       case 403: setStatus(.forbidden); return
       case 404: break
@@ -241,7 +249,8 @@ class GitEngine {
       return
     }*/
     
-    if needsGitSettingsFlag {
+    guard let needsGitSettings = checkNeedsGitSettings() else { return }
+    if needsGitSettings {
       setStatus(.needsGitSettings)
       return
     }

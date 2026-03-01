@@ -66,7 +66,8 @@ class GitEngine {
     }
     
     //private func checkNeedsGitSettings() -> Bool {
-    func checkNeedsGitSettings() -> Bool {
+    //func checkNeedsGitSettings() -> Bool {
+    func checkNeedsGitSettings() -> Bool? {
       let projectURL = project.projectFolder.appendingPathComponent(".project.json")
       do {
         if let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty,
@@ -75,10 +76,12 @@ class GitEngine {
         }
       } catch {
         setStatus(.error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)"))
+        return nil
       }
       return true
     }
-    let needsGitSettingsFlag = checkNeedsGitSettings()
+    //let needsGitSettingsFlag = checkNeedsGitSettings()
+    guard let needsGitSettingsFlag = checkNeedsGitSettings() else { return }
     
     /*var needsGitSettingsFlag = false
     let projectURL = project.projectFolder.appendingPathComponent(".project.json")
@@ -98,7 +101,8 @@ class GitEngine {
     
     ////
   // Aufruf 1: User
-  if let (userData, userHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/user", token: token)) {
+  //if let (userData, userHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/user", token: token)) {
+  guard let (userData, userHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/user", token: token)) else { return }
     switch userHTTP.statusCode {
       case 200:
         if let json = try? JSONSerialization.jsonObject(with: userData) as? [String: Any],
@@ -111,12 +115,13 @@ class GitEngine {
       case 403: setStatus(.forbidden); return
       default: setStatus(.error("HTTP \(userHTTP.statusCode)")); return
     }
-  }
+  //}
 
   // Aufruf 2: Repo
   let repoName = project.projectName
   //if let (repoData, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
-  if let (_, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
+  //if let (_, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
+  guard let (_, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) else { return }
     switch repoHTTP.statusCode {
       case 200:
         if !overwriteConfirmed && needsGitSettingsFlag {
@@ -128,7 +133,7 @@ class GitEngine {
       case 404: break
       default: setStatus(.error("HTTP \(repoHTTP.statusCode)")); return
     }
-  }
+  //}
     
     /*
     // Aufruf 1: User

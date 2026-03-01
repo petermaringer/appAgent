@@ -63,7 +63,8 @@ class GitEngine {
       return
     }
     
-    private func checkNeedsGitSettings() -> Bool {
+    //private func checkNeedsGitSettings() -> Bool {
+    func checkNeedsGitSettings() -> Bool {
       let projectURL = project.projectFolder.appendingPathComponent(".project.json")
       do {
         if let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty,

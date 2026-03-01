@@ -24,7 +24,9 @@ class GitEngine {
   }
   
   ////
-  private func unwrapData(_ dataOpt: Data?, _ responseOpt: HTTPURLResponse?, _ errorOpt: String?) -> (Data, HTTPURLResponse)? {
+  //private func unwrapData(_ dataOpt: Data?, _ responseOpt: HTTPURLResponse?, _ errorOpt: String?) -> (Data, HTTPURLResponse)? {
+  private func unwrapData(_ result: (Data?, HTTPURLResponse?, String?)) -> (Data, HTTPURLResponse)? {
+    let (dataOpt, responseOpt, errorOpt) = result
     guard let data = dataOpt, let response = responseOpt, errorOpt == nil else {
       setStatus(.error(errorOpt ?? "Keine gültige Antwort"))
       return nil

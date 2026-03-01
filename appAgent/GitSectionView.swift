@@ -51,7 +51,8 @@ struct GitSectionView: View {
       SettingsView()
     }
     .sheet(isPresented: $showingGitSettings) {
-      GitSettingsSheet(projectFolder: project.projectFolder)
+      //GitSettingsSheet(projectFolder: project.projectFolder)
+      GitSettingsSheet(project: project)
     }
   }
   

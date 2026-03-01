@@ -2,7 +2,8 @@ import SwiftUI
 
 struct GitSettingsSheet: View {
   @ObservedObject var project: ProjectEngine
-  let projectFolder: URL
+  //let projectFolder: URL
+  let projectFolder: URL = project.projectFolder
   var onFinished: ((Bool) -> Void)?   // true = gespeichert
   
   @AppStorage("githubToken") private var token: String = ""

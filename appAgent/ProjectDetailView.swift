@@ -131,7 +131,8 @@ struct ProjectDetailView: View {
       FileEditorView(fileURL: item.url)
     }
     .sheet(isPresented: $showingGitSheet) {
-      GitSettingsSheet(projectFolder: project.projectFolder) { saved in
+      //GitSettingsSheet(projectFolder: project.projectFolder) { saved in
+      GitSettingsSheet(project: project) { saved in
         if saved {
           gitPush()
         }

@@ -17,7 +17,8 @@ struct GitSettingsSheet: View {
   
   @Environment(\.dismiss) private var dismiss
   
-  var repoName: String { projectFolder.lastPathComponent }
+  //var repoName: String { projectFolder.lastPathComponent }
+  lazy var repoName: String = project.projectName
   
   var body: some View {
     VStack(spacing: 20) {

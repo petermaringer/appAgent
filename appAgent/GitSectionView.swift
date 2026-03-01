@@ -71,11 +71,37 @@ struct GitSectionView: View {
     }
   }
   
+  private func statusTextBlock(title: String, subtitle: String) -> some View {
+    //VStack {
+    VStack(alignment: .center, spacing: 12) {
+      Text(title)
+      Text(subtitle)
+        .font(.caption)
+    }
+  }
+  
   private var statusSection: some View {
     VStack(alignment: .center, spacing: 12) {
       switch engine.status {
         case .idle:
           EmptyView()
+        
+        case .missingCredentials:
+        statusTextBlock(title: "⚙️ GitHub-Konfiguration erforderlich",
+                        subtitle: "Bitte Token und Owner in den App-Einstellungen angeben.")
+      case .unauthorized:
+        statusTextBlock(title: "❌ Ungültiger GitHub-Token",
+                        subtitle: "Der gespeicherte Token ist ungültig oder abgelaufen. Bitte in den App-Einstellungen überprüfen.")
+      case .forbidden:
+        statusTextBlock(title: "⛔ Keine Berechtigung",
+                        subtitle: "Der Token hat keine (ausreichenden) Rechte für dieses Repository. Bitte Token und Owner prüfen.")
+      case .repoExists:
+        statusTextBlock(title: "⚠️ Repository existiert bereits",
+                        subtitle: "Für dieses Projekt ist bereits ein GitHub-Repository vorhanden. Möchtest du es überschreiben?")
+      case .needsGitSettings:
+        statusTextBlock(title: "⚙️ Repository-Konfiguration erforderlich",
+                        subtitle: "Public/Private und Ziel-Branch müssen noch festgelegt werden, bevor ein Push möglich ist.")
+        /*
         case .missingCredentials:
           VStack {
             Text("⚙️ GitHub-Konfiguration erforderlich")
@@ -109,9 +135,12 @@ struct GitSectionView: View {
             Text("Public/Private und Ziel-Branch müssen noch festgelegt werden, bevor ein Push möglich ist.")
               .font(.caption)
           }
+        */
+        
         case .checkingRepo:
           HStack {
             ProgressView()
+              .tint(statusColor)
             Text("Prüfe Repository…")
           }
         default:

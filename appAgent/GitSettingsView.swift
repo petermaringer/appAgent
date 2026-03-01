@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct GitSettingsSheet: View {
+  @ObservedObject var project: ProjectEngine
   let projectFolder: URL
   var onFinished: ((Bool) -> Void)?   // true = gespeichert
   
@@ -84,7 +85,8 @@ struct GitSettingsSheet: View {
   
   private func saveSettings() {
     let settings = ProjectSettings(isPublic: isPublic, branch: branch)
-    let settingsURL = projectFolder.appendingPathComponent(".project.json")
+    //let settingsURL = projectFolder.appendingPathComponent(".project.json")
+    let settingsURL = project.projectFile
     
     if let data = try? JSONEncoder().encode(settings) {
       try? data.write(to: settingsURL, options: [.atomic])

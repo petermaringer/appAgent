@@ -14,7 +14,8 @@ class ProjectEngine: ObservableObject, Identifiable, Hashable {
   @Published var promptHistory: [String] = []
 
   var projectName: String { projectFolder.lastPathComponent }
-
+  var projectFile: URL { projectFolder.appendingPathComponent(".project.json") }
+  
   init(projectFolder: URL) {
     self.projectFolder = projectFolder
     let backupFolder = projectFolder.appendingPathComponent("Backups")

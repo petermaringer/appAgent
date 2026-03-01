@@ -24,44 +24,24 @@ class GitEngine {
   }
   
   ////
-  private func checkNeedsGitSettings() -> Bool? {
-    let projectURL = project.projectFolder.appendingPathComponent(".project.json")
-    do {
-      if let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty,
-         let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] {
-        return json["isPublic"] as? Bool == nil || (json["branch"] as? String ?? "").isEmpty
+  //private func checkNeedsGitSettings() -> Bool {
+    //func checkNeedsGitSettings() -> Bool {
+    private func checkNeedsGitSettings() -> Bool? {
+      let projectURL = project.projectFolder.appendingPathComponent(".project.json")
+      do {
+        if let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty,
+           let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] {
+          return json["isPublic"] as? Bool == nil || (json["branch"] as? String ?? "").isEmpty
+        }
+      } catch {
+        setStatus(.error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)"))
+        return nil
       }
-    } catch {
-      setStatus(.error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)"))
-      return nil
+      return true
     }
-    return true
-  }
-  
-  private func fetchGitData(from urlString: String, token: String) async -> (Data, HTTPURLResponse)? {
-  guard let url = URL(string: urlString) else {
-    setStatus(.error("Ungültige URL"))
-    return nil
-  }
-  var request = URLRequest(url: url)
-  request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-  request.httpMethod = "GET"
-  request.cachePolicy = .reloadIgnoringLocalCacheData
-  do {
-    let (data, response) = try await URLSession.shared.data(for: request)
-    guard let http = response as? HTTPURLResponse else {
-      setStatus(.error("Ungültige Serverantwort (keine HTTP-Response)"))
-      return nil
-    }
-    return (data, http)
-  } catch {
-    setStatus(.error(error.localizedDescription))
-    return nil
-  }
-}
   
   //private func unwrapData(_ dataOpt: Data?, _ responseOpt: HTTPURLResponse?, _ errorOpt: String?) -> (Data, HTTPURLResponse)? {
-  /*private func unwrapData(_ result: (Data?, HTTPURLResponse?, String?)) -> (Data, HTTPURLResponse)? {
+  private func unwrapData(_ result: (Data?, HTTPURLResponse?, String?)) -> (Data, HTTPURLResponse)? {
     let (dataOpt, responseOpt, errorOpt) = result
     guard let data = dataOpt, let response = responseOpt, errorOpt == nil else {
       setStatus(.error(errorOpt ?? "Keine gültige Antwort"))
@@ -87,7 +67,7 @@ class GitEngine {
     } catch {
       return (nil, nil, error.localizedDescription)
     }
-  }*/
+  }
   ////
   
   func performPush() async {
@@ -101,10 +81,30 @@ class GitEngine {
       return
     }
     
+    
+    //let needsGitSettingsFlag = checkNeedsGitSettings()
+    //guard let needsGitSettingsFlag = checkNeedsGitSettings() else { return }
+    
+    /*var needsGitSettingsFlag = false
+    let projectURL = project.projectFolder.appendingPathComponent(".project.json")
+    do {
+      if let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty,
+         let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] {
+        if json["isPublic"] as? Bool == nil || (json["branch"] as? String ?? "").isEmpty {
+          needsGitSettingsFlag = true
+        }
+      } else {
+        needsGitSettingsFlag = true
+      }
+    } catch {
+      setStatus(.error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)"))
+      return
+    }*/
+    
     ////
   // Aufruf 1: User
-  //guard let (userData, userHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/user", token: token)) else { return }
-  guard let (userData, userHTTP) = await fetchGitData(from: "https://api.github.com/user", token: token) else { return }
+  //if let (userData, userHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/user", token: token)) {
+  guard let (userData, userHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/user", token: token)) else { return }
     switch userHTTP.statusCode {
       case 200:
         if let json = try? JSONSerialization.jsonObject(with: userData) as? [String: Any],
@@ -117,11 +117,13 @@ class GitEngine {
       case 403: setStatus(.forbidden); return
       default: setStatus(.error("HTTP \(userHTTP.statusCode)")); return
     }
+  //}
   
   // Aufruf 2: Repo
   let repoName = project.projectName
-  //guard let (_, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) else { return }
-  guard let (_, repoHTTP) = await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token) else { return }
+  //if let (repoData, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
+  //if let (_, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) {
+  guard let (_, repoHTTP) = unwrapData(await fetchGitData(from: "https://api.github.com/repos/\(owner)/\(repoName)", token: token)) else { return }
     switch repoHTTP.statusCode {
       case 200:
         guard let needsGitSettings = checkNeedsGitSettings() else { return }
@@ -129,11 +131,17 @@ class GitEngine {
           setStatus(.repoExists)
           return
         }
+      /*case 200:
+        if !overwriteConfirmed && needsGitSettingsFlag {
+          setStatus(.repoExists)
+          return
+        }*/
       case 401: setStatus(.unauthorized); return
       case 403: setStatus(.forbidden); return
       case 404: break
       default: setStatus(.error("HTTP \(repoHTTP.statusCode)")); return
     }
+  //}
     
     /*
     // Aufruf 1: User

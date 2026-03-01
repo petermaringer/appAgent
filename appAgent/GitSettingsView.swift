@@ -80,7 +80,7 @@ struct GitSettingsSheet: View {
     let gitService = GitHubService(
       token: token,
       repoOwner: owner,
-      repoName: repoName
+      repoName: project.projectName
     )
     repoExists = await gitService.repositoryExists()
     isChecking = false

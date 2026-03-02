@@ -142,7 +142,7 @@ struct ProjectDetailView: View {
         .padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt
   .overlay(
     LinearGradient(
-      gradient: Gradient(colors: [Color(.systemBackground), Color(.systemBackground).opacity(0)]),
+      gradient: Gradient(colors: [Color(.red), Color(.systemBackground).opacity(0)]),
       startPoint: .top,
       endPoint: .bottom
     )

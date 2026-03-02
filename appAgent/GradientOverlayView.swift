@@ -17,6 +17,7 @@ struct GradientOverlayView<Content: View>: UIViewRepresentable {
     let hosting = UIHostingController(rootView: content)
     hosting.view.translatesAutoresizingMaskIntoConstraints = false
     hosting.view.backgroundColor = .clear
+    hosting.view.isOpaque = false
     container.addSubview(hosting.view)
 
     NSLayoutConstraint.activate([

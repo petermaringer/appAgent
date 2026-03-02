@@ -24,6 +24,7 @@ struct ProjectDetailView: View {
   let kiService = KIService()
   
   var body: some View {
+    ScrollView {
     VStack(spacing: 10) {
       // Prompt-History horizontal scroll
       if !project.promptHistory.isEmpty {
@@ -199,6 +200,9 @@ struct ProjectDetailView: View {
         }
       }
     }
+    
+    }
+    
   }
   
   func generateProject() async {

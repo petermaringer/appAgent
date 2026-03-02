@@ -13,6 +13,8 @@ struct ProjectDetailView: View {
   
   @State private var showingGitSheet: Bool = false
   
+  @FocusState private var editorFocused: Bool
+  
   // Neuer Wrapper für SwiftUI Sheet
   struct FileSheetItem: Identifiable {
     let id = UUID()
@@ -49,6 +51,7 @@ struct ProjectDetailView: View {
         //.frame(minHeight: 150, maxHeight: 250)
         .frame(height: 150)
         .padding(.horizontal)
+        .focused($editorFocused)
       
       // Buttons
       HStack {
@@ -110,8 +113,8 @@ struct ProjectDetailView: View {
         .padding(.horizontal)*/
       GitSectionView(project: project)
         //.frame(maxWidth: .infinity, alignment: .center)
-        //.padding()
-        .padding(.top)
+        .padding()
+        /*.padding(.top)
     .padding(.horizontal)
      
       LinearGradient(
@@ -123,7 +126,7 @@ struct ProjectDetailView: View {
     endPoint: .bottom
   )
   .frame(height: 16)
-  .allowsHitTesting(false)
+  .allowsHitTesting(false)*/
       
       // FileListView flexibel
       FileListView(projectFolder: project.projectFolder)
@@ -137,8 +140,20 @@ struct ProjectDetailView: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe
     .navigationTitle(project.projectName)
-    .contentShape(Rectangle())
-    .onTapGesture { hideKeyboard() }
+    //.contentShape(Rectangle())
+    //.onTapGesture { hideKeyboard() }
+    .background(
+  Group {
+    if editorFocused {
+      Color.clear
+        .contentShape(Rectangle())
+        .onTapGesture {
+          editorFocused = false // Keyboard weg beim ersten Tap
+        }
+        .allowsHitTesting(true) // zweiter Tap geht durch
+    }
+  }
+)
     .sheet(isPresented: $showingSettings) {
       SettingsView()
     }

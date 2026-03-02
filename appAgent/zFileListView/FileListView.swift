@@ -63,6 +63,7 @@ final class FileListViewController: UITableViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    tableView.backgroundColor = .clear
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
   }
 
@@ -76,7 +77,10 @@ final class FileListViewController: UITableViewController {
     let node = item.node
 
     let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
-
+    
+    cell.backgroundColor = .clear
+    cell.contentView.backgroundColor = .clear
+    
     var content = cell.defaultContentConfiguration()
     content.text = node.url.lastPathComponent
     content.image = UIImage(systemName: node.isFolder ? "folder.fill" : "doc.text")

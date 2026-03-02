@@ -46,12 +46,21 @@ struct ProjectDetailView: View {
       
       // TextEditor nimmt flexiblen Platz
       TextEditor(text: $userPrompt)
+        .padding(4)
+        .background(
+          RoundedRectangle(cornerRadius: 18)
+            .stroke(Color.gray.opacity(0.1), lineWidth: 3)
+        )
+        .frame(height: 150)
+        .padding(.horizontal)
+        .focused($editorFocused)
+      /*TextEditor(text: $userPrompt)
         .border(Color.gray.opacity(0.1), width: 3)
         //.frame(minHeight: 150, maxHeight: 250)
         .frame(height: 150)
         .padding(.horizontal)
         .cornerRadius(18)
-        .focused($editorFocused)
+        .focused($editorFocused)*/
       
       // Buttons
       HStack {

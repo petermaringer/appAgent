@@ -125,7 +125,7 @@ struct ProjectDetailView: View {
         
   //ZStack
   ZStack(alignment: .top) {
-    //BackgroundLayer
+    //BackgroundFill
     Color.yellow
     
     //GradientOverlayView
@@ -133,6 +133,7 @@ struct ProjectDetailView: View {
     
     //FileListView
     FileListView(projectFolder: project.projectFolder)
+      //.frame(maxHeight: .infinity)
       .frame(minHeight: 250, maxHeight: 400)
       .layoutPriority(1)
       .background(Color.clear)
@@ -170,15 +171,16 @@ struct ProjectDetailView: View {
   }
   
 }
-    .frame(maxWidth: .infinity)
-    .background(Color.yellow.opacity(0.05))
+    //.frame(maxWidth: .infinity, maxHeight: .infinity)
     .navigationTitle(project.projectName)
     .background(
       Group {
         if editorFocused {
           Color.clear
             .contentShape(Rectangle())
-            .onTapGesture { editorFocused = false } //Keyboard weg
+            .onTapGesture {
+              editorFocused = false //Keyboard weg
+            }
         }
       }
     )
@@ -218,6 +220,7 @@ func gitPush() {
   let settingsURL = project.projectFolder.appendingPathComponent(".project.json")
   
   if FileManager.default.fileExists(atPath: settingsURL.path) {
+    // Settings existieren → Push starten
     if let data = try? Data(contentsOf: settingsURL),
        let settings = try? JSONDecoder().decode(ProjectSettings.self, from: data) {
       Task {
@@ -229,18 +232,27 @@ func gitPush() {
           branch: settings.branch
         )*/
         let gitService = GitHubService(token: token, repoOwner: owner, repoName: project.projectName)
+        //await gitService.pushProject(at: project.projectFolder) { _ in }
         await gitService.pushProject(at: project.projectFolder) { status in
           statusMessage = status
         }
       }
     } else {
-      //Datei beschädigt
+      // Datei beschädigt → Sheet erneut öffnen
       showingGitSheet = true
     }
   } else {
-    //Settings existieren noch nicht
+    // Settings existieren noch nicht → Sheet öffnen
     showingGitSheet = true
   }
 }
   
 }
+
+/*#if canImport(UIKit)
+extension View {
+  func hideKeyboard() {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+  }
+}
+#endif*/

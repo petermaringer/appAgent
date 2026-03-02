@@ -46,7 +46,7 @@ struct ProjectDetailView: View {
       
       // TextEditor nimmt flexiblen Platz
       TextEditor(text: $userPrompt)
-        .padding(4)
+        .padding(12)
         .background(
           RoundedRectangle(cornerRadius: 18)
             .stroke(Color.gray.opacity(0.1), lineWidth: 3)
@@ -136,15 +136,28 @@ struct ProjectDetailView: View {
       
       // FileListView flexibel
       FileListView(projectFolder: project.projectFolder)
-        .frame(maxHeight: .infinity)
+        //.frame(maxHeight: .infinity)
         .padding(.horizontal)
+        
+        .padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt
+  .overlay(
+    LinearGradient(
+      gradient: Gradient(colors: [Color(.systemBackground), Color(.systemBackground).opacity(0)]),
+      startPoint: .top,
+      endPoint: .bottom
+    )
+    .frame(height: 16) // exakt gleiche Höhe wie Top-Padding
+    .allowsHitTesting(false),
+    alignment: .top
+  )
+        
         .onReceive(NotificationCenter.default.publisher(for: .openFileInEditor)) { notification in
           if let url = notification.object as? URL {
             sheetItem = FileSheetItem(url: url)
           }
         }
     }
-    .frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe
+    //.frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe
     .navigationTitle(project.projectName)
     .background(
       Group {

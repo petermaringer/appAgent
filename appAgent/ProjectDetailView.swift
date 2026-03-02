@@ -9,7 +9,6 @@ struct ProjectDetailView: View {
   
   @AppStorage("githubToken") private var token: String = ""
   @AppStorage("githubOwner") private var owner: String = ""
-  //@AppStorage("githubRepo") private var repo: String = ""
   
   @State private var showingGitSheet: Bool = false
   
@@ -47,10 +46,11 @@ struct ProjectDetailView: View {
       
       // TextEditor nimmt flexiblen Platz
       TextEditor(text: $userPrompt)
-        .border(Color.gray, width: 1)
+        .border(Color.gray.opacity(0.1), width: 3)
         //.frame(minHeight: 150, maxHeight: 250)
         .frame(height: 150)
         .padding(.horizontal)
+        .cornerRadius(18)
         .focused($editorFocused)
       
       // Buttons
@@ -109,10 +109,7 @@ struct ProjectDetailView: View {
           .padding(.horizontal)
       }
       
-      /*GitSectionView(project: project)
-        .padding(.horizontal)*/
       GitSectionView(project: project)
-        //.frame(maxWidth: .infinity, alignment: .center)
         .padding()
         /*.padding(.top)
     .padding(.horizontal)
@@ -140,20 +137,18 @@ struct ProjectDetailView: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe
     .navigationTitle(project.projectName)
-    //.contentShape(Rectangle())
-    //.onTapGesture { hideKeyboard() }
     .background(
-  Group {
-    if editorFocused {
-      Color.clear
-        .contentShape(Rectangle())
-        .onTapGesture {
-          editorFocused = false // Keyboard weg beim ersten Tap
+      Group {
+        if editorFocused {
+          Color.clear
+            .contentShape(Rectangle())
+            .onTapGesture {
+              editorFocused = false // Keyboard weg beim ersten Tap
+            }
+            //.allowsHitTesting(true)
         }
-        .allowsHitTesting(true) // zweiter Tap geht durch
-    }
-  }
-)
+      }
+    )
     .sheet(isPresented: $showingSettings) {
       SettingsView()
     }
@@ -161,16 +156,11 @@ struct ProjectDetailView: View {
       FileEditorView(fileURL: item.url)
     }
     .sheet(isPresented: $showingGitSheet) {
-      //GitSettingsSheet(projectFolder: project.projectFolder) { saved in }
       GitSettingsSheet(project: project) { saved in
         if saved {
           gitPush()
         }
       }
-      /*GitSettingsSheet(projectFolder: project.projectFolder) {
-        showingGitSheet = false
-        gitPush()
-      }*/
     }
   }
   
@@ -179,17 +169,14 @@ struct ProjectDetailView: View {
       statusMessage = "Bitte Prompt eingeben."
       return
     }
-    
     isProcessing = true
     statusMessage = ""
-    
     do {
       try await project.generateOrUpdateProject(userPrompt: userPrompt, kiService: kiService)
       statusMessage = "✅ Projekt aktualisiert."
     } catch {
       statusMessage = "❌ Fehler: \(error.localizedDescription)"
     }
-    
     isProcessing = false
   }
   
@@ -226,10 +213,10 @@ func gitPush() {
   
 }
 
-#if canImport(UIKit)
+/*#if canImport(UIKit)
 extension View {
   func hideKeyboard() {
     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
   }
 }
-#endif
+#endif*/

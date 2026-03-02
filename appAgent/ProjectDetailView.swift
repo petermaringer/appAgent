@@ -52,7 +52,7 @@ struct ProjectDetailView: View {
           RoundedRectangle(cornerRadius: 18)
             .stroke(Color.gray.opacity(0.1), lineWidth: 3)
         )
-        .frame(height: 150)
+        .frame(height: 100) //150
         .padding(.horizontal)
         .focused($editorFocused)
       /*TextEditor(text: $userPrompt)
@@ -123,6 +123,7 @@ struct ProjectDetailView: View {
   .padding()
   /*.padding(.top)
   .padding(.horizontal)*/
+  .background(Color.blue.opacity(0.1))
 
   /*LinearGradient(
     gradient: Gradient(colors: [
@@ -141,6 +142,8 @@ struct ProjectDetailView: View {
     //GradientOverlayView(gradientHeight: 16) {
     FileListView(projectFolder: project.projectFolder)
       //.frame(maxHeight: .infinity)
+      FileListView(...)
+      .frame(minHeight: 200, maxHeight: 400)
       .background(Color.clear)
       .padding(.horizontal)
       .padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt

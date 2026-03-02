@@ -135,6 +135,8 @@ struct ProjectDetailView: View {
   .allowsHitTesting(false)*/
       
       // FileListView flexibel
+      ZStack(alignment: .top) {
+      Color.yellow
       GradientOverlayView(gradientHeight: 16) {
       FileListView(projectFolder: project.projectFolder)
         //.frame(maxHeight: .infinity)
@@ -153,6 +155,7 @@ struct ProjectDetailView: View {
   )
   .frame(height: 16)
   .allowsHitTesting(false)*/
+  }
         
   /*.overlay(
     LinearGradient(

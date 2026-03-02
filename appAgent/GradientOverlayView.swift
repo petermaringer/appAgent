@@ -27,12 +27,11 @@ struct GradientOverlayView<Content: View>: UIViewRepresentable {
     ])
 
     // Gradient-Layer fixiert oben
-    /*let gradientLayer = CAGradientLayer()
-    gradientLayer.colors = [
+    let gradientLayer = CAGradientLayer()
+    /*gradientLayer.colors = [
       UIColor.systemBackground.cgColor,
       UIColor.systemBackground.withAlphaComponent(0).cgColor
     ]*/
-    
     gradientLayer.colors = [
   UIColor.red.cgColor,    // obere Farbe, sichtbar
   UIColor.clear.cgColor   // untere Farbe, transparent

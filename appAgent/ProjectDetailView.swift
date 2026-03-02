@@ -111,18 +111,21 @@ struct ProjectDetailView: View {
       GitSectionView(project: project)
         //.frame(maxWidth: .infinity, alignment: .center)
         .padding()
-        .overlay(
-    LinearGradient(
-      gradient: Gradient(colors: [
-        Color(.systemBackground).opacity(0), // oben transparent
-        Color(.systemBackground)             // unten deckend
-      ]),
-      startPoint: .top,
-      endPoint: .bottom
-    )
-    .frame(height: 16), // genau die Höhe des unteren Padding-Bereichs
-    alignment: .bottom
-  )
+        .mask(
+      VStack(spacing: 0) {
+        Rectangle() // alles oben sichtbar
+        LinearGradient(
+          gradient: Gradient(stops: [
+            .init(color: .black, location: 0.0),
+            .init(color: .black, location: 0.85),
+            .init(color: .clear, location: 1.0)
+          ]),
+          startPoint: .top,
+          endPoint: .bottom
+        )
+        .frame(height: 20) // steuert, über wieviel Höhe der Fade weich wird
+      }
+      )
       
       // FileListView flexibel
       FileListView(projectFolder: project.projectFolder)
@@ -136,6 +139,7 @@ struct ProjectDetailView: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe
     .navigationTitle(project.projectName)
+    .contentShape(Rectangle())
     .onTapGesture { hideKeyboard() }
     .sheet(isPresented: $showingSettings) {
       SettingsView()

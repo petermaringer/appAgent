@@ -24,7 +24,6 @@ class GitEngine {
   }
   
   private func checkNeedsGitSettings() -> Bool? {
-    //let projectURL = project.projectFolder.appendingPathComponent(".project.json")
     do {
       let projectData = try Data(contentsOf: project.projectFile)
       guard !projectData.isEmpty, let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] else {
@@ -38,19 +37,6 @@ class GitEngine {
       return nil
     }
   }
-  /*private func checkNeedsGitSettings() -> Bool? {
-    let projectURL = project.projectFolder.appendingPathComponent(".project.json")
-    do {
-      if let projectData = try? Data(contentsOf: projectURL), !projectData.isEmpty,
-         let json = try JSONSerialization.jsonObject(with: projectData) as? [String: Any] {
-        return json["isPublic"] as? Bool == nil || (json["branch"] as? String ?? "").isEmpty
-      }
-    } catch {
-      setStatus(.error("Fehler beim Lesen der Project-JSON: \(error.localizedDescription)"))
-      return nil
-    }
-    return true
-  }*/
   
   private func fetchGitData(from urlString: String, token: String) async -> (Data, HTTPURLResponse)? {
     guard let url = URL(string: urlString) else {
@@ -118,6 +104,9 @@ class GitEngine {
       setStatus(.needsGitSettings)
       return
     }
+    
+    setStatus(.pushing(progress: 0.37))
+    try? await Task.sleep(nanoseconds: 200_000_000)
     
     setStatus(.success)
     

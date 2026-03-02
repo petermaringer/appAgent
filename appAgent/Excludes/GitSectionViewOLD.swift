@@ -11,7 +11,7 @@ enum GitStatus: Equatable {
   //Laufend
   case checkingRepo
   case creatingRepo
-  case pushing(progress: Double)
+  case pushing(progress: String)
   //Abschluss
   case success
   case error(String)
@@ -20,10 +20,10 @@ enum GitStatus: Equatable {
 struct GitSectionView: View {
   
   @ObservedObject var project: ProjectEngine
-  @State private var git: GitEngine
+  @State private var engine: GitEngine
   init(project: ProjectEngine) {
     self.project = project
-    self.git = GitEngine(project: project)
+    self.engine = GitEngine(project: project)
   }
   
   @State private var showingAppSettings: Bool = false
@@ -35,7 +35,7 @@ struct GitSectionView: View {
         .font(.headline)
       Button("Push auf GitHub") {
         Task {
-          await git.performPush()
+          await engine.performPush()
         }
       }
       .buttonStyle(.borderedProminent)
@@ -51,19 +51,20 @@ struct GitSectionView: View {
       SettingsView()
     }
     .sheet(isPresented: $showingGitSettings) {
+      //GitSettingsSheet(projectFolder: project.projectFolder)
       GitSettingsSheet(project: project)
     }
   }
   
   private var isBusy: Bool {
-    switch git.status {
+    switch engine.status {
       case .checkingRepo, .creatingRepo, .pushing: return true
       default: return false
     }
   }
   
   private var statusColor: Color {
-    switch git.status {
+    switch engine.status {
       case .unauthorized, .forbidden, .error: return .red
       case .repoExists: return .orange
       case .success: return .green
@@ -72,6 +73,7 @@ struct GitSectionView: View {
   }
   
   private func statusTextBlock(title: String, subtitle: String) -> some View {
+    //VStack {
     VStack(alignment: .center, spacing: 6) {
       Text(title)
       Text(subtitle)
@@ -81,9 +83,10 @@ struct GitSectionView: View {
   
   private var statusSection: some View {
     VStack(alignment: .center, spacing: 12) {
-      switch git.status {
+      switch engine.status {
         case .idle:
           EmptyView()
+        
         case .missingCredentials:
           statusTextBlock(title: "⚙️ GitHub-Konfiguration erforderlich",
                           subtitle: "Bitte Token und Owner in den App-Einstellungen angeben.")
@@ -92,39 +95,68 @@ struct GitSectionView: View {
                           subtitle: "Der gespeicherte Token ist ungültig oder abgelaufen. Bitte in den App-Einstellungen überprüfen.")
         case .forbidden:
           statusTextBlock(title: "⛔ Keine Berechtigung",
-                          //subtitle: "Der Token hat keine (ausreichenden) Rechte für dieses Repository. Bitte Token und Owner prüfen.")
-                          subtitle: "Der Token hat keine (ausreichenden) Rechte für dieses Repository. Bitte Token und Owner in den App-Einstellungen prüfen.")
+                          subtitle: "Der Token hat keine (ausreichenden) Rechte für dieses Repository. Bitte Token und Owner prüfen.")
         case .repoExists:
           statusTextBlock(title: "⚠️ Repository existiert bereits",
                           subtitle: "Für dieses Projekt ist bereits ein GitHub-Repository vorhanden. Möchtest du es überschreiben?")
         case .needsGitSettings:
           statusTextBlock(title: "⚙️ Repository-Konfiguration erforderlich",
                           subtitle: "Public/Private und Ziel-Branch müssen noch festgelegt werden, bevor ein Push möglich ist.")
+        /*
+        case .missingCredentials:
+          VStack {
+            Text("⚙️ GitHub-Konfiguration erforderlich")
+            Text("Bitte Token und Owner in den App-Einstellungen angeben.")
+              .font(.caption)
+          }
+        case .unauthorized:
+          VStack {
+            Text("❌ Ungültiger GitHub-Token")
+            Text("Der gespeicherte Token ist ungültig oder abgelaufen. Bitte in den App-Einstellungen überprüfen.")
+              .font(.caption)
+          }
+          //.foregroundColor(.red)
+        case .forbidden:
+          VStack {
+            Text("⛔ Keine Berechtigung")
+            Text("Der Token hat keine (ausreichenden) Rechte für dieses Repository. Bitte Token und Owner in den App-Einstellungen prüfen.")
+              .font(.caption)
+          }
+          //.foregroundColor(.red)
+        case .repoExists:
+          VStack {
+            Text("⚠️ Repository existiert bereits")
+            Text("Für dieses Projekt ist bereits ein GitHub-Repository vorhanden. Möchtest du es überschreiben?")
+              .font(.caption)
+          }
+          //.foregroundColor(.orange)
+        case .needsGitSettings:
+          VStack {
+            Text("⚙️ Repository-Konfiguration erforderlich")
+            Text("Public/Private und Ziel-Branch müssen noch festgelegt werden, bevor ein Push möglich ist.")
+              .font(.caption)
+          }
+        */
+        
         case .error(let message):
           statusTextBlock(title: "❌ Fehler",
                           subtitle: message)
         case .success:
           statusTextBlock(title: "✅ Push erfolgreich",
                           subtitle: "Das Projekt wurde erfolgreich auf GitHub hochgeladen.")
+        
         case .checkingRepo:
           HStack {
             ProgressView()
               .tint(statusColor)
             Text("Prüfe Repository…")
           }
-        case .pushing(let progress):
-          HStack {
-            ProgressView(value: progress)
-              .tint(statusColor)
-            Text("\(Int(progress * 100)) %")
-            //ProgressView(progress)
-            //Text(progress)
-          }
         default:
-          Text("⚠️ Unbehandelter Status: \(String(describing: git.status))")
+          Text("⚠️ Unbehandelter Status: \(String(describing: engine.status))")
             .foregroundColor(.purple)
       }
     }
+    //.foregroundColor(.blue)
     .foregroundColor(statusColor)
     .multilineTextAlignment(.center)
     .padding(.horizontal)
@@ -132,7 +164,7 @@ struct GitSectionView: View {
   
   private var actionSection: some View {
     VStack(alignment: .center, spacing: 12) {
-      switch git.status {
+      switch engine.status {
         case .missingCredentials, .unauthorized, .forbidden:
           Button("App-Settings öffnen") {
             showingAppSettings = true
@@ -143,9 +175,9 @@ struct GitSectionView: View {
           }
         case .repoExists:
           Button("Repository überschreiben") {
-            git.setOverwriteConfirmed(true)
+            engine.setOverwriteConfirmed(true)
             Task {
-              await git.performPush()
+              await engine.performPush()
             }
           }
         default: EmptyView()

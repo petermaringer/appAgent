@@ -137,7 +137,7 @@ struct ProjectDetailView: View {
       // FileListView flexibel
       ZStack(alignment: .top) {
       Color.yellow
-      GradientOverlayView(gradientHeight: 16) {
+      //GradientOverlayView(gradientHeight: 16) {
       FileListView(projectFolder: project.projectFolder)
         //.frame(maxHeight: .infinity)
         .background(Color.clear)
@@ -149,13 +149,13 @@ struct ProjectDetailView: View {
     gradient: Gradient(colors: [
       Color(.red),
       Color(.systemBackground).opacity(0)
+      Color.clear
     ]),
     startPoint: .top,
     endPoint: .bottom
   )
   .frame(height: 16)
   .allowsHitTesting(false)*/
-  }
         
   /*.overlay(
     LinearGradient(
@@ -173,6 +173,16 @@ struct ProjectDetailView: View {
             sheetItem = FileSheetItem(url: url)
           }
         }
+        
+        LinearGradient(
+        gradient: Gradient(colors: [Color.red, Color.clear]),
+        startPoint: .top,
+        endPoint: .bottom
+      )
+      .frame(height: 50)
+      .allowsHitTesting(false)
+        
+        //}
         }
     }
     //.frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe

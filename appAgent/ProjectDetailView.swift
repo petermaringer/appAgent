@@ -120,7 +120,7 @@ struct ProjectDetailView: View {
       startPoint: .top,
       endPoint: .bottom
     )
-    .allowsHitTesting(false), // Buttons stören nicht
+    .frame(height: 16), // genau die Höhe des unteren Padding-Bereichs
     alignment: .bottom
   )
       

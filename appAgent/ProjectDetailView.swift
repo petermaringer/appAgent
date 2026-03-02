@@ -119,11 +119,11 @@ struct ProjectDetailView: View {
       }
       
       GitSectionView(project: project)
-        .padding()
-        /*.padding(.top)
-    .padding(.horizontal)
-     
-      LinearGradient(
+  .padding()
+  /*.padding(.top)
+  .padding(.horizontal)*/
+
+  /*LinearGradient(
     gradient: Gradient(colors: [
       Color(.systemBackground),
       Color(.systemBackground).opacity(0)
@@ -133,58 +133,45 @@ struct ProjectDetailView: View {
   )
   .frame(height: 16)
   .allowsHitTesting(false)*/
-      
-      // FileListView flexibel
-      ZStack(alignment: .top) {
-      Color.yellow
-      //GradientOverlayView(gradientHeight: 16) {
-      FileListView(projectFolder: project.projectFolder)
-        //.frame(maxHeight: .infinity)
-        .background(Color.clear)
-        .padding(.horizontal)
-        
-        .padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt
-        
-        /*LinearGradient(
-    gradient: Gradient(colors: [
-      Color(.red),
-      Color(.systemBackground).opacity(0)
-      Color.clear
-    ]),
-    startPoint: .top,
-    endPoint: .bottom
-  )
-  .frame(height: 16)
-  .allowsHitTesting(false)*/
-        
-  /*.overlay(
+
+  // FileListView flexibel
+  ZStack(alignment: .top) {
+    Color.yellow
+    //GradientOverlayView(gradientHeight: 16) {
+    FileListView(projectFolder: project.projectFolder)
+      //.frame(maxHeight: .infinity)
+      .background(Color.clear)
+      .padding(.horizontal)
+      .padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt
+
+      /*.overlay(
+        LinearGradient(
+          gradient: Gradient(colors: [Color(.red), Color(.systemBackground).opacity(0)]),
+          startPoint: .top,
+          endPoint: .bottom
+        )
+        .frame(height: 16) // exakt gleiche Höhe wie Top-Padding
+        .allowsHitTesting(false),
+        alignment: .top
+      )*/
+
+      .onReceive(NotificationCenter.default.publisher(for: .openFileInEditor)) { notification in
+        if let url = notification.object as? URL {
+          sheetItem = FileSheetItem(url: url)
+        }
+      }
+    //}
+
     LinearGradient(
-      gradient: Gradient(colors: [Color(.red), Color(.systemBackground).opacity(0)]),
+      gradient: Gradient(colors: [Color.red, Color.clear]),
+      //Color(.red), Color(.systemBackground).opacity(0)
       startPoint: .top,
       endPoint: .bottom
     )
-    .frame(height: 16) // exakt gleiche Höhe wie Top-Padding
-    .allowsHitTesting(false),
-    alignment: .top
-  )*/
-        
-        .onReceive(NotificationCenter.default.publisher(for: .openFileInEditor)) { notification in
-          if let url = notification.object as? URL {
-            sheetItem = FileSheetItem(url: url)
-          }
-        }
-        
-        LinearGradient(
-        gradient: Gradient(colors: [Color.red, Color.clear]),
-        startPoint: .top,
-        endPoint: .bottom
-      )
-      .frame(height: 50)
-      .allowsHitTesting(false)
-        
-        //}
-        }
-    }
+    .frame(height: 50)
+    .allowsHitTesting(false)
+  }
+}
     //.frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe
     .navigationTitle(project.projectName)
     .background(

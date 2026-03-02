@@ -142,7 +142,6 @@ struct ProjectDetailView: View {
     //GradientOverlayView(gradientHeight: 16) {
     FileListView(projectFolder: project.projectFolder)
       //.frame(maxHeight: .infinity)
-      FileListView(...)
       .frame(minHeight: 200, maxHeight: 400)
       .background(Color.clear)
       .padding(.horizontal)

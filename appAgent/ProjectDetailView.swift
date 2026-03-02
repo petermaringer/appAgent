@@ -138,6 +138,7 @@ struct ProjectDetailView: View {
       GradientOverlayView(gradientHeight: 16) {
       FileListView(projectFolder: project.projectFolder)
         //.frame(maxHeight: .infinity)
+        .background(Color.clear)
         .padding(.horizontal)
         
         .padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt

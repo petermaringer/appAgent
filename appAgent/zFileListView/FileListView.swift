@@ -192,6 +192,8 @@ struct FileListView: UIViewControllerRepresentable {
     vc.onFileSelected = { url in
       context.coordinator.openFile(url)
     }
+    vc.view.backgroundColor = .clear // <- transparent setzen
+    vc.tableView.backgroundColor = .clear
     return vc
   }
 

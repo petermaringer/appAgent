@@ -111,6 +111,18 @@ struct ProjectDetailView: View {
       GitSectionView(project: project)
         //.frame(maxWidth: .infinity, alignment: .center)
         .padding()
+        .overlay(
+    LinearGradient(
+      gradient: Gradient(colors: [
+        Color(.systemBackground).opacity(0), // oben transparent
+        Color(.systemBackground)             // unten deckend
+      ]),
+      startPoint: .top,
+      endPoint: .bottom
+    )
+    .allowsHitTesting(false), // Buttons stören nicht
+    alignment: .bottom
+  )
       
       // FileListView flexibel
       FileListView(projectFolder: project.projectFolder)
@@ -124,6 +136,7 @@ struct ProjectDetailView: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe
     .navigationTitle(project.projectName)
+    .onTapGesture { hideKeyboard() }
     .sheet(isPresented: $showingSettings) {
       SettingsView()
     }
@@ -131,7 +144,7 @@ struct ProjectDetailView: View {
       FileEditorView(fileURL: item.url)
     }
     .sheet(isPresented: $showingGitSheet) {
-      //GitSettingsSheet(projectFolder: project.projectFolder) { saved in
+      //GitSettingsSheet(projectFolder: project.projectFolder) { saved in }
       GitSettingsSheet(project: project) { saved in
         if saved {
           gitPush()
@@ -195,3 +208,11 @@ func gitPush() {
 }
   
 }
+
+#if canImport(UIKit)
+extension View {
+  func hideKeyboard() {
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+  }
+}
+#endif

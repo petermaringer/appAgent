@@ -106,7 +106,9 @@ class GitEngine {
     }
     
     setStatus(.pushing(progress: 0.37))
-    try? await Task.sleep(nanoseconds: 200_000_000)
+    try? await Task.sleep(nanoseconds: 400_000_000)
+    setStatus(.pushing(progress: 0.74))
+    try? await Task.sleep(nanoseconds: 400_000_000)
     
     setStatus(.success)
     

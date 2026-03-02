@@ -117,8 +117,6 @@ struct GitSectionView: View {
             ProgressView(value: progress)
               .tint(statusColor)
             Text("\(Int(progress * 100)) %")
-            //ProgressView(progress)
-            //Text(progress)
           }
         default:
           Text("⚠️ Unbehandelter Status: \(String(describing: git.status))")

@@ -52,7 +52,7 @@ struct ProjectDetailView: View {
           RoundedRectangle(cornerRadius: 18)
             .stroke(Color.gray.opacity(0.1), lineWidth: 3)
         )
-        .frame(height: 100) //150
+        .frame(height: 112) //150
         .padding(.horizontal)
         .focused($editorFocused)
       /*TextEditor(text: $userPrompt)
@@ -110,20 +110,23 @@ struct ProjectDetailView: View {
         }
         .padding(.trailing)
       }
+      .frame(maxWidth: .infinity)
       .padding(.horizontal)
+      .background(Color.pink.opacity(0.05))
       
       // Statusmeldung
       if !statusMessage.isEmpty {
         Text(statusMessage)
           .foregroundColor(.blue)
           .padding(.horizontal)
+          .background(Color.green.opacity(0.05))
       }
       
       GitSectionView(project: project)
   .padding()
   /*.padding(.top)
   .padding(.horizontal)*/
-  .background(Color.blue.opacity(0.1))
+  .background(Color.blue.opacity(0.05))
 
   /*LinearGradient(
     gradient: Gradient(colors: [
@@ -142,10 +145,11 @@ struct ProjectDetailView: View {
     //GradientOverlayView(gradientHeight: 16) {
     FileListView(projectFolder: project.projectFolder)
       //.frame(maxHeight: .infinity)
-      .frame(minHeight: 200, maxHeight: 400)
+      .frame(minHeight: 250, maxHeight: 400)
+      .layoutPriority(1)
       .background(Color.clear)
       .padding(.horizontal)
-      .padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt
+      //.padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt
 
       /*.overlay(
         LinearGradient(

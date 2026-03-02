@@ -110,22 +110,20 @@ struct ProjectDetailView: View {
         .padding(.horizontal)*/
       GitSectionView(project: project)
         //.frame(maxWidth: .infinity, alignment: .center)
-        .padding()
-        .mask(
-      VStack(spacing: 0) {
-        Rectangle() // alles oben sichtbar
-        LinearGradient(
-          gradient: Gradient(stops: [
-            .init(color: .black, location: 0.0),
-            .init(color: .black, location: 0.85),
-            .init(color: .clear, location: 1.0)
-          ]),
-          startPoint: .top,
-          endPoint: .bottom
-        )
-        .frame(height: 20) // steuert, über wieviel Höhe der Fade weich wird
-      }
-      )
+        //.padding()
+        .padding(.top)
+    .padding(.horizontal)
+     
+      LinearGradient(
+    gradient: Gradient(colors: [
+      Color(.systemBackground),
+      Color(.systemBackground).opacity(0)
+    ]),
+    startPoint: .top,
+    endPoint: .bottom
+  )
+  .frame(height: 16)
+  .allowsHitTesting(false)
       
       // FileListView flexibel
       FileListView(projectFolder: project.projectFolder)

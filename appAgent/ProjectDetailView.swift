@@ -135,14 +135,14 @@ struct ProjectDetailView: View {
   .allowsHitTesting(false)*/
       
       // FileListView flexibel
-      ZStack(alignment: .top) {
+      GradientOverlayView(gradientHeight: 16) {
       FileListView(projectFolder: project.projectFolder)
         //.frame(maxHeight: .infinity)
         .padding(.horizontal)
         
         .padding(.top, 16) // Abstand für den Inhalt, damit Gradient nichts überdeckt
         
-        LinearGradient(
+        /*LinearGradient(
     gradient: Gradient(colors: [
       Color(.red),
       Color(.systemBackground).opacity(0)
@@ -151,7 +151,7 @@ struct ProjectDetailView: View {
     endPoint: .bottom
   )
   .frame(height: 16)
-  .allowsHitTesting(false)
+  .allowsHitTesting(false)*/
         
   /*.overlay(
     LinearGradient(
@@ -163,12 +163,12 @@ struct ProjectDetailView: View {
     .allowsHitTesting(false),
     alignment: .top
   )*/
-  }
         
         .onReceive(NotificationCenter.default.publisher(for: .openFileInEditor)) { notification in
           if let url = notification.object as? URL {
             sheetItem = FileSheetItem(url: url)
           }
+        }
         }
     }
     //.frame(maxWidth: .infinity, maxHeight: .infinity) // volle Höhe

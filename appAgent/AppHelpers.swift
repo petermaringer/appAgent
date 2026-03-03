@@ -22,6 +22,21 @@ extension Color {
 
 // MARK: ObservableObject für AppSettings
 class AppSettings: ObservableObject {
+  @AppStorage("appTintColorHex") private var appTintColorHex: String = "#007AFF"
+  @Published var tintColor: Color
+  init() {
+    let initialColor: Color
+    if let color = Color(hex: appTintColorHex) {
+      initialColor = color
+    } else { initialColor = .blue }
+    self.tintColor = initialColor
+  }
+  func updateTintColor(_ color: Color) {
+    tintColor = color
+    appTintColorHex = color.toHex() ?? "#007AFF"
+  }
+}
+/*class AppSettings: ObservableObject {
   @Published var tintColor: Color {
     didSet { appTintColorHex = tintColor.toHex() ?? "#007AFF" }
   }
@@ -31,7 +46,7 @@ class AppSettings: ObservableObject {
       tintColor = color
     } else { tintColor = .blue }
   }
-}
+}*/
 
 // MARK: Func für max. Breite innerhalb der Safe Areas
 func calculateSafeMaxWidth(for safeAreaInsets: EdgeInsets) -> CGFloat {

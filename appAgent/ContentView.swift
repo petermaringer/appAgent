@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
+  @EnvironmentObject var settings: AppSettings
   @State private var projects: [ProjectEngine] = []
   @State private var showingSettingsSheet = false
   @State private var showingNewProjectSheet = false
@@ -24,7 +25,8 @@ struct ContentView: View {
                     projects.remove(at: index)
                   }
                 } label: {
-                  Label("Delete", systemImage: "trash")
+                  Label("Löschen", systemImage: "trash")
+                  //Label("Delete", systemImage: "trash")
                 }
                 .tint(nil)
               }
@@ -78,7 +80,8 @@ struct ContentView: View {
         ProjectDetailView(project: project)
       }
     }
-    .tint(.blue)
+    .tint(settings.tintColor)
+    //.tint(.blue)
     .sheet(isPresented: $showingSettingsSheet) {
       SettingsView()
     }
@@ -97,7 +100,7 @@ struct ContentView: View {
     .onAppear(perform: loadProjects)
   }
   
-  struct ToolbarButton: ButtonStyle {
+  /*struct ToolbarButton: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             //.foregroundStyle(.link)
@@ -108,7 +111,7 @@ struct ContentView: View {
             .opacity(configuration.isPressed ? 0.2 : 1)
             .contentShape(Rectangle())
     }
-  }
+  }*/
   
   func loadProjects() {
     let fm = FileManager.default

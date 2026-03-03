@@ -23,13 +23,17 @@ extension Color {
 // MARK: ObservableObject für AppSettings
 class AppSettings: ObservableObject {
   @AppStorage("appTintColorHex") private var appTintColorHex: String = "#007AFF"
-  @Published var tintColor: Color
+  @Published var tintColor: Color = .blue
+  //@Published var tintColor: Color
   init() {
-    let initialColor: Color
+    /*let initialColor: Color
     if let color = Color(hex: appTintColorHex) {
       initialColor = color
     } else { initialColor = .blue }
-    self.tintColor = initialColor
+    self.tintColor = initialColor*/
+    if let color = Color(hex: UserDefaults.standard.string(forKey: "appTintColorHex") ?? "#007AFF") {
+      tintColor = color
+    }
   }
   func updateTintColor(_ color: Color) {
     tintColor = color

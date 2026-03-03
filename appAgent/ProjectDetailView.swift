@@ -185,7 +185,7 @@ struct ProjectDetailView: View {
       }
     )
     .navigationTitle(project.projectName)
-    .tint(.blue)
+    //.tint(.blue)
     //.toolbarColorScheme(.automatic, for: .navigationBar)
     /*.background(Color.yellow.opacity(0.05))
     .navigationTitle(project.projectName)

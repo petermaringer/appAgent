@@ -71,7 +71,11 @@ struct ContentView: View {
         }
       }
       .navigationDestination(for: ProjectEngine.self) { project in
-        ProjectDetailView(project: project)
+        NavigationStack {
+          ProjectDetailView(project: project)
+        }
+        .tint(.blue)
+        //ProjectDetailView(project: project)
       }
     }
     .tint(.blue)

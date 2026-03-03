@@ -197,10 +197,14 @@ struct ProjectDetailView: View {
             .foregroundColor(.blue)
             .padding(12)
             .contentShape(Rectangle())
+            .opacity(isPressed ? 0.5 : 1)
         }
         .buttonStyle(.plain)
       }
     }
+    .background(
+      ProjectDetailInteractivePopGestureEnabler()
+    )
     
     //.tint(.blue)
     //.toolbarColorScheme(.automatic, for: .navigationBar)
@@ -277,4 +281,18 @@ func gitPush() {
   }
 }
   
+}
+
+struct ProjectDetailInteractivePopGestureEnabler: UIViewControllerRepresentable {
+  func makeUIViewController(context: Context) -> UIViewController {
+    let vc = UIViewController()
+    DispatchQueue.main.async {
+      if let nav = vc.navigationController {
+        nav.interactivePopGestureRecognizer?.delegate = nil
+        nav.interactivePopGestureRecognizer?.isEnabled = true
+      }
+    }
+    return vc
+  }
+  func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }

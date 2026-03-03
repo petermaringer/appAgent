@@ -21,10 +21,14 @@ struct ProjectDetailView: View {
   @State private var sheetItem: FileSheetItem? = nil
   
   @Environment(\.dismiss) private var dismiss
+  @Environment(\.safeAreaInsets) private var safeAreaInsets
   
   let kiService = KIService()
   
   var body: some View {
+    let safeMaxWidth = calculateSafeMaxWidth(for: safeAreaInsets)
+    userPrompt =  "\(safeMaxWidth)"
+    //userPrompt =  "\(String(describing: safeMaxWidth))"
     ScrollView {
     //VStack(spacing: 10) {}
     VStack(alignment: .center, spacing: 12) {
@@ -106,7 +110,7 @@ struct ProjectDetailView: View {
         }
         .padding(.trailing)
       }
-      .frame(maxWidth: .infinity)
+      //.frame(maxWidth: .infinity)
       .padding(.horizontal)
       .background(Color.pink.opacity(0.05))
       
@@ -176,6 +180,7 @@ struct ProjectDetailView: View {
     .background(
       ZStack {
         Color.yellow.opacity(0.08)
+        ProjectDetailInteractivePopGestureEnabler()
         Group {
           if editorFocused {
             Color.clear
@@ -194,17 +199,19 @@ struct ProjectDetailView: View {
           dismiss()
         } label: {
           Image(systemName: "chevron.left")
-            .foregroundColor(.blue)
+            /*.foregroundColor(.blue)
             .padding(12)
             .contentShape(Rectangle())
-            .opacity(isPressed ? 0.5 : 1)
+            .opacity(isPressed ? 0.5 : 1)*/
         }
-        .buttonStyle(.plain)
+        .toolbarButton(.standard)
+        //.buttonStyle(StandardToolbarButtonStyle())
+        //.buttonStyle(.plain)
       }
     }
-    .background(
+    /*.background(
       ProjectDetailInteractivePopGestureEnabler()
-    )
+    )*/
     
     //.tint(.blue)
     //.toolbarColorScheme(.automatic, for: .navigationBar)

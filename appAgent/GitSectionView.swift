@@ -43,10 +43,11 @@ struct GitSectionView: View {
       statusSection
       actionSection
     }
-    .frame(maxWidth: .infinity)
+    //.frame(maxWidth: .infinity)
     .padding()
     .background(Color.gray.opacity(0.1))
     .cornerRadius(18)
+    .frame(maxWidth: .infinity, alignment: .center)
     .sheet(isPresented: $showingAppSettings) {
       SettingsView()
     }

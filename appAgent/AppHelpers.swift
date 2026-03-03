@@ -1,11 +1,44 @@
 import SwiftUI
 
-// MARK: - Funktion für max. Breite innerhalb der Safe Areas
+// MARK: Color-Extension für Hex <-> UIColor
+extension Color {
+  init?(hex: String) {
+    var hex = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    hex = hex.replacingOccurrences(of: "#", with: "")
+    guard hex.count == 6, let int = Int(hex, radix: 16) else { return nil }
+    let r = Double((int >> 16) & 0xFF)/255
+    let g = Double((int >> 8) & 0xFF)/255
+    let b = Double(int & 0xFF)/255
+    self.init(red: r, green: g, blue: b)
+  }
+  func toHex() -> String? {
+    let uiColor = UIColor(self)
+    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    guard uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
+    let ri = Int(r*255), gi = Int(g*255), bi = Int(b*255)
+    return String(format:"#%02X%02X%02X", ri, gi, bi)
+  }
+}
+
+// MARK: ObservableObject für AppSettings
+class AppSettings: ObservableObject {
+  @Published var tintColor: Color {
+    didSet { appTintColorHex = tintColor.toHex() ?? "#007AFF" }
+  }
+  @AppStorage("appTintColorHex") private var appTintColorHex: String = "#007AFF"
+  init() {
+    if let color = Color(hex: appTintColorHex) {
+      tintColor = color
+    } else { tintColor = .blue }
+  }
+}
+
+// MARK: Func für max. Breite innerhalb der Safe Areas
 func calculateSafeMaxWidth(for safeAreaInsets: EdgeInsets) -> CGFloat {
   UIScreen.main.bounds.width - safeAreaInsets.leading - safeAreaInsets.trailing
 }
 
-// MARK: - ButtonStyle für gedrückt-Opacity
+// MARK: ButtonStyle für Gedrückt-Opacity
 struct PressedOpacityButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
@@ -13,13 +46,13 @@ struct PressedOpacityButtonStyle: ButtonStyle {
   }
 }
 
-// MARK: - Enum für Button-Typen
+// MARK: Enum für Button-Typen
 enum ToolbarButtonType {
   case standard
   case prominent
 }
 
-// MARK: - ViewModifier für Toolbar Buttons
+// MARK: ViewModifier für Toolbar Buttons
 struct ToolbarButtonModifier: ViewModifier {
   let type: ToolbarButtonType
   func body(content: Content) -> some View {
@@ -38,7 +71,7 @@ struct ToolbarButtonModifier: ViewModifier {
   }
 }
 
-// MARK: - Extension für einfache Nutzung
+// MARK: View-Extension für einfache Nutzung
 extension View {
   func toolbarButton(_ type: ToolbarButtonType) -> some View {
     self.modifier(ToolbarButtonModifier(type: type))
@@ -46,8 +79,7 @@ extension View {
   }
 }
 
-/*import SwiftUI
-
+/*
 struct StandardToolbarButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
@@ -57,7 +89,6 @@ struct StandardToolbarButtonStyle: ButtonStyle {
       .opacity(configuration.isPressed ? 0.5 : 1)
   }
 }
-
 struct ProminentToolbarButtonStyle: ButtonStyle {
   func makeBody(configuration: Configuration) -> some View {
     configuration.label

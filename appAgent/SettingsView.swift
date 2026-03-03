@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SettingsView: View {
+  @EnvironmentObject var settings: AppSettings
+  
   @AppStorage("bundleIDPrefix") private var bundleIDPrefix: String = ""
   
   @AppStorage("githubToken") private var githubToken: String = ""
@@ -11,19 +13,53 @@ struct SettingsView: View {
   @AppStorage("openRouterModel") private var model: String = "gpt-4.1-mini"
   
   @Environment(\.dismiss) var dismiss
-
+  
   var body: some View {
     NavigationView {
       Form {
-        Section(header: Text("Projekt Einstellungen")) {
+        Section(header: Text("App-Einstellungen")) {
+  Text("Akzentfarbe auswählen")
+    .font(.subheadline)
+    .foregroundColor(.primary)
+  ScrollView(.horizontal, showsIndicators: false) {
+    HStack(spacing: 15) {
+      ForEach([
+        (Color.blue, "Blau"),
+        (Color.black, "Schwarz"),
+        (Color.yellow, "Gelb")
+      ], id: \.1) { color, name in
+        VStack {
+          Circle()
+            .fill(color)
+            .frame(width: 40, height: 40)
+            .overlay(
+              Circle()
+                .stroke(settings.tintColor == color ? Color.black : Color.clear, lineWidth: 2)
+            )
+            .onTapGesture {
+              settings.tintColor = color
+            }
+          Text(name)
+            .font(.caption)
+        }
+      }
+    }
+    .padding(.vertical, 5)
+  }
+  Text("Wähle die Akzentfarbe für die gesamte App.")
+    .font(.footnote)
+    .foregroundColor(.gray)
+}
+        
+        Section(header: Text("Projekt-Einstellungen")) {
           TextField("Bundle-ID Prefix", text: $bundleIDPrefix)
             //.textContentType(.none)
           Text("Beispiel: com.meinefirma")
             .font(.footnote)
             .foregroundColor(.gray)
         }
-
-        Section(header: Text("GitHub Einstellungen")) {
+        
+        Section(header: Text("GitHub-Einstellungen")) {
           TextField("Token", text: $githubToken)
             //.textContentType(.password)
           TextField("Owner", text: $githubOwner)
@@ -32,8 +68,8 @@ struct SettingsView: View {
             .font(.footnote)
             .foregroundColor(.gray)
         }
-
-        Section(header: Text("OpenRouter Einstellungen")) {
+        
+        Section(header: Text("OpenRouter-Einstellungen")) {
           TextField("API-Key", text: $apiKey)
             //.textContentType(.password)
           TextField("Modell", text: $model)
@@ -51,6 +87,7 @@ struct SettingsView: View {
         }
       }
     }
-    .tint(.blue)
+    .tint(settings.tintColor)
+    //.tint(.blue)
   }
 }

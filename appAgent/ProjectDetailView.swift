@@ -165,13 +165,29 @@ struct ProjectDetailView: View {
       startPoint: .top,
       endPoint: .bottom
     )
-    .frame(height: 50) //16?
+    .frame(height: 16) //50
     .allowsHitTesting(false)
   }
   
 }
     .frame(maxWidth: .infinity)
-    .background(Color.yellow.opacity(0.05))
+    
+    .background(
+      ZStack {
+        Color.yellow.opacity(0.08)
+        Group {
+          if editorFocused {
+            Color.clear
+              .contentShape(Rectangle())
+              .onTapGesture { editorFocused = false } //Keyboard weg
+          }
+        }
+      }
+    )
+    .navigationTitle(project.projectName)
+    .tint(.blue)
+    .toolbarColorScheme(.automatic, for: .navigationBar)
+    /*.background(Color.yellow.opacity(0.05))
     .navigationTitle(project.projectName)
     .background(
       Group {
@@ -181,7 +197,8 @@ struct ProjectDetailView: View {
             .onTapGesture { editorFocused = false } //Keyboard weg
         }
       }
-    )
+    )*/
+    
     .sheet(isPresented: $showingSettings) {
       SettingsView()
     }

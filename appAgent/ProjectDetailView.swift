@@ -20,6 +20,8 @@ struct ProjectDetailView: View {
   }
   @State private var sheetItem: FileSheetItem? = nil
   
+  @Environment(\.dismiss) private var dismiss
+  
   let kiService = KIService()
   
   var body: some View {
@@ -171,7 +173,6 @@ struct ProjectDetailView: View {
   
 }
     .frame(maxWidth: .infinity)
-    
     .background(
       ZStack {
         Color.yellow.opacity(0.08)
@@ -185,6 +186,19 @@ struct ProjectDetailView: View {
       }
     )
     .navigationTitle(project.projectName)
+    
+    .navigationBarBackButtonHidden(true)
+    .toolbar {
+      ToolbarItem(placement: .navigationBarLeading) {
+        Button {
+          dismiss()
+        } label: {
+          Image(systemName: "chevron.left")
+            .foregroundColor(.blue)
+        }
+      }
+    }
+    
     //.tint(.blue)
     //.toolbarColorScheme(.automatic, for: .navigationBar)
     /*.background(Color.yellow.opacity(0.05))

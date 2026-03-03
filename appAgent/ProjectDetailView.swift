@@ -33,7 +33,7 @@ struct ProjectDetailView: View {
     //VStack(spacing: 10) {}
     VStack(alignment: .center, spacing: 12) {
       
-      userPrompt =  "\(containerRelativeFrame(.horizontal))"
+      //userPrompt =  "\(containerRelativeFrame(.horizontal))"
       
       //Prompt-History
       if !project.promptHistory.isEmpty {
@@ -239,6 +239,9 @@ struct ProjectDetailView: View {
       GitSettingsSheet(project: project) { saved in
         if saved { gitPush() }
       }
+    }
+    .onAppear {
+      userPrompt = "\(containerRelativeFrame(.horizontal))"
     }
     
     }

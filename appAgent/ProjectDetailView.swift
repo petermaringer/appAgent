@@ -195,7 +195,10 @@ struct ProjectDetailView: View {
         } label: {
           Image(systemName: "chevron.left")
             .foregroundColor(.blue)
+            .padding(12)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
       }
     }
     

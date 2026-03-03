@@ -21,17 +21,19 @@ struct ProjectDetailView: View {
   @State private var sheetItem: FileSheetItem? = nil
   
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.safeAreaInsets) private var safeAreaInsets
+  //@Environment(\.safeAreaInsets) private var safeAreaInsets
   
   let kiService = KIService()
   
   var body: some View {
-    let safeMaxWidth = calculateSafeMaxWidth(for: safeAreaInsets)
+    /*let safeMaxWidth = calculateSafeMaxWidth(for: safeAreaInsets)
     userPrompt =  "\(safeMaxWidth)"
-    //userPrompt =  "\(String(describing: safeMaxWidth))"
+    //userPrompt =  "\(String(describing: safeMaxWidth))"*/
     ScrollView {
     //VStack(spacing: 10) {}
     VStack(alignment: .center, spacing: 12) {
+      
+      userPrompt =  "\(containerRelativeFrame(.horizontal))"
       
       //Prompt-History
       if !project.promptHistory.isEmpty {

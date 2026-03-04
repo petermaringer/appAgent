@@ -109,7 +109,8 @@ extension View {
     modifier(
       ToolbarButtonModifier(
         type: type,
-        tintColor: tintColor ?? (Environment(\.settings).wrappedValue?.tintColor ?? .blue)
+        tintColor: tintColor ?? .blue
+        //tintColor: tintColor ?? (Environment(\.settings).wrappedValue?.tintColor ?? .blue)
       )
     )
     .buttonStyle(PressedOpacityButtonStyle())

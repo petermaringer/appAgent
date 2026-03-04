@@ -34,21 +34,22 @@ struct SettingsView: View {
         (Color.yellow, "Gelb")*/
       ], id: \.1) { color, name in
         VStack {
-          Circle()
+          ColorCircle(color: color)
+          /*Circle()
             .fill(color)
             .frame(width: 40, height: 40)
             .overlay(
               Circle()
                 .stroke(settings.tintColor == color ? (color.isLight ? .black : .gray) : Color.clear, lineWidth: 2)
             )
-            /*.overlay(
-              Circle()
-                .stroke(settings.tintColor == color ? Color.black : Color.clear, lineWidth: 2)
-            )*/
+            //.overlay(
+              //Circle()
+                //.stroke(settings.tintColor == color ? Color.black : Color.clear, lineWidth: 2)
+            //)
             .onTapGesture {
               settings.updateTintColor(color)
               //settings.tintColor = color
-            }
+            }*/
           Text(name)
             .font(.caption)
         }
@@ -100,5 +101,25 @@ struct SettingsView: View {
     }
     .tint(settings.tintColor)
     //.tint(.blue)
+  }
+}
+
+struct ColorCircle: View {
+  let color: Color
+  @EnvironmentObject var settings: AppSettings
+  var body: some View {
+    Circle()
+      .fill(color)
+      .frame(width: 40, height: 40)
+      .overlay(
+        Circle()
+          .stroke(
+            settings.tintColor == color ?
+              (color.isLight ? .black : Color(white: 0.85)) :
+              Color.clear,
+            lineWidth: 2
+          )
+      )
+      .onTapGesture { settings.updateTintColor(color) }
   }
 }

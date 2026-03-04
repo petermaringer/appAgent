@@ -25,8 +25,13 @@ struct SettingsView: View {
     HStack(spacing: 15) {
       ForEach([
         (Color.blue, "Blau"),
+        (Color.gray, "Grau"),
         (Color.black, "Schwarz"),
+        (Color.indigo, "Indigo"),
         (Color.yellow, "Gelb")
+        /*(Color.blue, "Blau"),
+        (Color.black, "Schwarz"),
+        (Color.yellow, "Gelb")*/
       ], id: \.1) { color, name in
         VStack {
           Circle()
@@ -34,8 +39,12 @@ struct SettingsView: View {
             .frame(width: 40, height: 40)
             .overlay(
               Circle()
-                .stroke(settings.tintColor == color ? Color.black : Color.clear, lineWidth: 2)
+                .stroke(settings.tintColor == color ? (color.isLight ? .black : .gray) : Color.clear, lineWidth: 2)
             )
+            /*.overlay(
+              Circle()
+                .stroke(settings.tintColor == color ? Color.black : Color.clear, lineWidth: 2)
+            )*/
             .onTapGesture {
               settings.updateTintColor(color)
               //settings.tintColor = color
@@ -45,6 +54,7 @@ struct SettingsView: View {
         }
       }
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, 5)
   }
   Text("Wähle die Akzentfarbe für die gesamte App.")

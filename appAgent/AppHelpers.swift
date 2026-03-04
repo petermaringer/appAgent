@@ -1,6 +1,7 @@
 import SwiftUI
+import UIKit
 
-// MARK: Color-Extension für Hex <-> UIColor
+// MARK: Color-Extension für Hex <-> UIColor und isLight
 extension Color {
   init?(hex: String) {
     var hex = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -17,6 +18,13 @@ extension Color {
     guard uiColor.getRed(&r, green: &g, blue: &b, alpha: &a) else { return nil }
     let ri = Int(r*255), gi = Int(g*255), bi = Int(b*255)
     return String(format:"#%02X%02X%02X", ri, gi, bi)
+  }
+  func isLight() -> Bool {
+    let uiColor = UIColor(self)
+    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+    let brightness = (0.299*r + 0.587*g + 0.114*b)
+    return brightness > 0.5
   }
 }
 

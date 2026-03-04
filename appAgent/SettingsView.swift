@@ -37,7 +37,8 @@ struct SettingsView: View {
                 .stroke(settings.tintColor == color ? Color.black : Color.clear, lineWidth: 2)
             )
             .onTapGesture {
-              settings.tintColor = color
+              settings.updateTintColor(color)
+              //settings.tintColor = color
             }
           Text(name)
             .font(.caption)

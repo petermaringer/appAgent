@@ -209,7 +209,8 @@ struct ProjectDetailView: View {
             .contentShape(Rectangle())
             .opacity(isPressed ? 0.5 : 1)*/
         }
-        .toolbarButton(.standard)
+        .toolbarButton(.standard, tintColor: settings.tintColor)
+        //.toolbarButton(.standard)
         //.buttonStyle(StandardToolbarButtonStyle())
         //.buttonStyle(.plain)
       }

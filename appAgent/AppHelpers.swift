@@ -83,31 +83,40 @@ enum ToolbarButtonType {
 // MARK: ViewModifier für Toolbar Buttons
 struct ToolbarButtonModifier: ViewModifier {
   let type: ToolbarButtonType
+  let tintColor: Color
   func body(content: Content) -> some View {
     switch type {
     case .standard:
       content
-        .foregroundColor(settings.tintColor)
+        .foregroundColor(tintColor)
         //.foregroundColor(.blue)
         .padding(12)
         .contentShape(Rectangle())
     case .prominent:
       content
-        .tint(settings.tintColor)
+        //.tint(tintColor)
         .padding(12)
         .contentShape(Rectangle())
         .buttonStyle(.borderedProminent)
+        .tint(tintColor)
     }
   }
 }
 
 // MARK: View-Extension für einfache Nutzung
 extension View {
+  func toolbarButton(_ type: ToolbarButtonType, tintColor: Color) -> some View {
+    self.modifier(ToolbarButtonModifier(type: type))
+        .tint(tintColor)
+        .buttonStyle(PressedOpacityButtonStyle())
+  }
+}
+/*extension View {
   func toolbarButton(_ type: ToolbarButtonType) -> some View {
     self.modifier(ToolbarButtonModifier(type: type))
       .buttonStyle(PressedOpacityButtonStyle())
   }
-}
+}*/
 
 /*
 struct StandardToolbarButtonStyle: ButtonStyle {

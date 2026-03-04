@@ -28,7 +28,10 @@ struct SettingsView: View {
         (Color.gray, "Grau"),
         (Color.black, "Schwarz"),
         (Color.indigo, "Indigo"),
-        (Color.yellow, "Gelb")
+        (Color.yellow, "Gelb"),
+        (Color.teal, "Teal"),
+        (Color.purple, "Purple"),
+        (Color.pink, "Pink")
         /*(Color.blue, "Blau"),
         (Color.black, "Schwarz"),
         (Color.yellow, "Gelb")*/
@@ -55,10 +58,12 @@ struct SettingsView: View {
         }
       }
     }
-    .frame(maxWidth: .infinity, alignment: .leading)
+    //.frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, 5)
+    .padding(.horizontal, 1)
   }
   .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+  //Toggle
   Text("Wähle die Akzentfarbe für die gesamte App.")
     .font(.footnote)
     .foregroundColor(.gray)
@@ -114,12 +119,7 @@ struct ColorCircle: View {
       .frame(width: 40, height: 40)
       .overlay(
         Circle()
-          .stroke(
-            settings.tintColor == color ?
-              (color.isLight() ? .black : Color(white: 0.85)) :
-              Color.clear,
-            lineWidth: 2
-          )
+          .stroke(settings.tintColor == color ? (color.isLight() ? .black : Color(white: 0.85)) : Color.clear, lineWidth: 2)
       )
       .onTapGesture { settings.updateTintColor(color) }
       .onAppear { }

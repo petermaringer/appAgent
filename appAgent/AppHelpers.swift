@@ -105,12 +105,23 @@ struct ToolbarButtonModifier: ViewModifier {
 
 // MARK: View-Extension für einfache Nutzung
 extension View {
+  func toolbarButton(_ type: ToolbarButtonType, tintColor: Color? = nil) -> some View {
+    modifier(
+      ToolbarButtonModifier(
+        type: type,
+        tintColor: tintColor ?? (Environment(\.settings).wrappedValue?.tintColor ?? .blue)
+      )
+    )
+    .buttonStyle(PressedOpacityButtonStyle())
+  }
+}
+/*extension View {
   func toolbarButton(_ type: ToolbarButtonType, tintColor: Color) -> some View {
     self.modifier(ToolbarButtonModifier(type: type))
         .tint(tintColor)
         .buttonStyle(PressedOpacityButtonStyle())
   }
-}
+}*/
 /*extension View {
   func toolbarButton(_ type: ToolbarButtonType) -> some View {
     self.modifier(ToolbarButtonModifier(type: type))

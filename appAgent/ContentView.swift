@@ -85,6 +85,7 @@ struct ContentView: View {
     //.tint(.blue)
     .sheet(isPresented: $showingSettingsSheet) {
       SettingsView()
+        .environmentObject(settings)
     }
     .sheet(isPresented: $showingNewProjectSheet) {
       NewProjectView(projects: $projects) { newProject in
@@ -97,6 +98,7 @@ struct ContentView: View {
         }
         navigationPath.append(newProject)
       }
+      .environmentObject(settings)
     }
     .onAppear(perform: loadProjects)
   }

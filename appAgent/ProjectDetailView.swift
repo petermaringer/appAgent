@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProjectDetailView: View {
   @ObservedObject var project: ProjectEngine
+  @EnvironmentObject var settings: AppSettings
   @State private var userPrompt: String = ""
   @State private var showingSettings: Bool = false
   @State private var isProcessing: Bool = false
@@ -119,7 +120,8 @@ struct ProjectDetailView: View {
       //StatusMessage
       if !statusMessage.isEmpty {
         Text(statusMessage)
-          .foregroundColor(.blue)
+          .foregroundColor(settings.tintColor)
+          //.foregroundColor(.blue)
           .padding(.horizontal)
           .background(Color.green.opacity(0.05))
       }
@@ -193,6 +195,7 @@ struct ProjectDetailView: View {
       }
     )
     .navigationTitle(project.projectName)
+    .tint(settings.tintColor)
     
     .navigationBarBackButtonHidden(true)
     .toolbar {
@@ -231,14 +234,17 @@ struct ProjectDetailView: View {
     
     .sheet(isPresented: $showingSettings) {
       SettingsView()
+        .environmentObject(settings)
     }
     .sheet(item: $sheetItem) { item in
       FileEditorView(fileURL: item.url)
+        .environmentObject(settings)
     }
     .sheet(isPresented: $showingGitSheet) {
       GitSettingsSheet(project: project) { saved in
         if saved { gitPush() }
       }
+      .environmentObject(settings)
     }
     .onAppear {
       userPrompt = "\(containerRelativeFrame(.horizontal))"

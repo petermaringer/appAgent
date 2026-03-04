@@ -58,6 +58,7 @@ struct SettingsView: View {
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(.vertical, 5)
   }
+  .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
   Text("Wähle die Akzentfarbe für die gesamte App.")
     .font(.footnote)
     .foregroundColor(.gray)
@@ -121,5 +122,6 @@ struct ColorCircle: View {
           )
       )
       .onTapGesture { settings.updateTintColor(color) }
+      .onAppear { }
   }
 }

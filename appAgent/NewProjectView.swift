@@ -9,6 +9,7 @@ struct NewProjectView: View {
   @State private var alertMessage = ""
   let onCreated: (ProjectEngine) -> Void
   @AppStorage("bundleIDPrefix") private var bundleIDPrefix: String = ""
+  @EnvironmentObject var settings: AppSettings
   
   var body: some View {
     NavigationView {
@@ -54,7 +55,8 @@ struct NewProjectView: View {
         Text(alertMessage)
       }
     }
-    .tint(.blue)
+    .tint(settings.tintColor)
+    //.tint(.blue)
   }
   
   func createProject() {

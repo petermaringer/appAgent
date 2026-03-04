@@ -10,6 +10,8 @@ struct GitSettingsSheet: View {
   @AppStorage("githubToken") private var token: String = ""
   @AppStorage("githubOwner") private var owner: String = ""
   
+  @EnvironmentObject var settings: AppSettings
+  
   @State private var isPublic: Bool = true
   @State private var branch: String = "main"
   @State private var repoExists: Bool? = nil
@@ -74,6 +76,7 @@ struct GitSettingsSheet: View {
     .task {
       await checkIfRepoExists()
     }
+    .tint(settings.tintColor)
   }
   
   private func checkIfRepoExists() async {

@@ -87,11 +87,13 @@ struct ToolbarButtonModifier: ViewModifier {
     switch type {
     case .standard:
       content
-        .foregroundColor(.blue)
+        .foregroundColor(settings.tintColor)
+        //.foregroundColor(.blue)
         .padding(12)
         .contentShape(Rectangle())
     case .prominent:
       content
+        .tint(settings.tintColor)
         .padding(12)
         .contentShape(Rectangle())
         .buttonStyle(.borderedProminent)

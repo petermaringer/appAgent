@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FileEditorView: View {
   let fileURL: URL
+  @EnvironmentObject var settings: AppSettings
   @Environment(\.dismiss) var dismiss
   @State private var codeText: String = ""
   @State private var isKeyboardVisible: Bool = false
@@ -40,6 +41,7 @@ struct FileEditorView: View {
       .padding(.horizontal)
     }
     .padding()
+    .tint(settings.tintColor)
     .onAppear {
       loadFile()
 

@@ -115,7 +115,7 @@ struct ColorCircle: View {
         Circle()
           .stroke(
             settings.tintColor == color ?
-              (color.isLight ? .black : Color(white: 0.85)) :
+              (color.isLight() ? .black : Color(white: 0.85)) :
               Color.clear,
             lineWidth: 2
           )

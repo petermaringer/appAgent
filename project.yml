@@ -15,7 +15,7 @@ targets:
         excludes:
           - Excludes
     settings:
-      Release:
+      #Release:
       #SWIFT_VERSION: "4.0"
       #SWIFT_VERSION: "5.10.1"
       #SWIFT_VERSION: "6.0.1"

@@ -19,5 +19,10 @@ targets:
       #SWIFT_VERSION: "5.10.1"
       #SWIFT_VERSION: "6.0.1"
       CODE_SIGN_ENTITLEMENTS: appAgent/App.entitlements
+      
+      DEAD_CODE_STRIPPING: YES
+      SWIFT_OPTIMIZATION_LEVEL: "-Osize"
+      OTHER_LDFLAGS: "-Wl,-dead_strip -Xlinker -S"
+      
     scheme:
       configVariants:

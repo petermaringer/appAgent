@@ -14,12 +14,15 @@ targets:
       - path: appAgent
         excludes:
           - Excludes
+          - $(APP_ICONSET_EXCLUDE)
     settings:
       #Release:
       #SWIFT_VERSION: "4.0"
       #SWIFT_VERSION: "5.10.1"
       #SWIFT_VERSION: "6.0.1"
       CODE_SIGN_ENTITLEMENTS: appAgent/App.entitlements
+      
+      ASSETCATALOG_COMPILER_APPICON_NAME: $(APP_ICONSET)
       
       DEAD_CODE_STRIPPING: YES
       SWIFT_OPTIMIZATION_LEVEL: "-Osize"

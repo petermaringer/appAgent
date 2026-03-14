@@ -16,11 +16,13 @@ targets:
           - Excludes
           - $(APP_ICONSET_EXCLUDE)
     settings:
-      #Release:
       #SWIFT_VERSION: "4.0"
       #SWIFT_VERSION: "5.10.1"
       #SWIFT_VERSION: "6.0.1"
       CODE_SIGN_ENTITLEMENTS: appAgent/App.entitlements
+      
+      MARKETING_VERSION: "1.0"
+      CURRENT_PROJECT_VERSION: $(BITRISE_BUILD_NUMBER)
       
       ASSETCATALOG_COMPILER_APPICON_NAME: $(APP_ICONSET)
       

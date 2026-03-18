@@ -32,6 +32,7 @@ targets:
       
       USR_APPICON_PRIMARY: $(ENV_APPICON_PRIMARY)
       USR_APPICON_ALT1: $(ENV_APPICON_ALT1)
+      ASSETCATALOG_COMPILER_APPICON_NAME: $(USR_APPICON_PRIMARY)
       
     scheme:
       configVariants:

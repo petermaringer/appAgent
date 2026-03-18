@@ -139,6 +139,9 @@ struct GitSectionView: View {
         case .needsGitSettings:
           Button("Repo-Settings öffnen") {
             showingGitSettings = true
+            Task {
+              try? await UIApplication.shared.setAlternateIconName(nil)
+            }
           }
         case .repoExists:
           Button("Repository überschreiben") {

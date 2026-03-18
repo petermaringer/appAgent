@@ -145,7 +145,7 @@ struct GitSectionView: View {
             git.setOverwriteConfirmed(true)
             Task {
               await git.performPush()
-              await UIApplication.shared.setAlternateIconName("Alt1")
+              try? await UIApplication.shared.setAlternateIconName("Alt1")
             }
           }
         default: EmptyView()

@@ -9,8 +9,26 @@
   <key>CFBundleExecutable</key>
   <string>$(EXECUTABLE_NAME)</string>
   
+  <key>CFBundleIcons</key>
+  <dict>
+    <key>CFBundlePrimaryIcon</key>
+    <dict>
+      <key>CFBundleIconName</key>
+      <string>$(USR_APPICON_PRIMARY)</string>
+    </dict>
+    <key>CFBundleAlternateIcons</key>
+    <dict>
+      <key>Alt1</key>
+      <dict>
+        <key>CFBundleIconName</key>
+        <string>$(USR_APPICON_ALT1)</string>
+      </dict>
+    </dict>
+  </dict>
+  <!--
   <key>CFBundleIconName</key>
   <string>$(ASSETCATALOG_COMPILER_APPICON_NAME)</string>
+  -->
   
   <key>CFBundleIdentifier</key>
   <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>

@@ -14,7 +14,7 @@ targets:
       - path: appAgent
         excludes:
           - Excludes
-          - $(APP_ICONSET_EXCLUDE)
+          #- $(APP_ICONSET_EXCLUDE)
     settings:
       #SWIFT_VERSION: "4.0"
       #SWIFT_VERSION: "5.10.1"
@@ -24,11 +24,14 @@ targets:
       MARKETING_VERSION: "1.0"
       CURRENT_PROJECT_VERSION: $(BITRISE_BUILD_NUMBER)
       
-      ASSETCATALOG_COMPILER_APPICON_NAME: $(APP_ICONSET)
+      #ASSETCATALOG_COMPILER_APPICON_NAME: $(APP_ICONSET)
       
       DEAD_CODE_STRIPPING: YES
       SWIFT_OPTIMIZATION_LEVEL: "-Osize"
       OTHER_LDFLAGS: "-Wl,-dead_strip -Xlinker -S"
+      
+      USR_APPICON_PRIMARY: $(ENV_APPICON_PRIMARY)
+      USR_APPICON_ALT1: $(ENV_APPICON_ALT1)
       
     scheme:
       configVariants:

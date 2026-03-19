@@ -21,7 +21,8 @@
       <key>Alt1</key>
       <dict>
         <key>CFBundleIconName</key>
-        <string>$(USR_APPICON_ALT1)</string>
+        <string>DevIconAlt1</string>
+        <!--<string>$(USR_APPICON_ALT1)</string>-->
       </dict>
     </dict>
   </dict>

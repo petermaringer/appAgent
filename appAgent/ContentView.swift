@@ -59,7 +59,7 @@ struct ContentView: View {
             
             Task {
               if UIApplication.shared.supportsAlternateIcons {
-                let alt = "Alt1v1"
+                let alt = "Alt1v2"
                 try? await UIApplication.shared.setAlternateIconName(UIApplication.shared.alternateIconName == alt ? nil : alt)
                 //let current = UIApplication.shared.alternateIconName
                 //try? await UIApplication.shared.setAlternateIconName(current == "Alt1New" ? nil : "Alt1New")

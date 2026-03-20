@@ -23,7 +23,7 @@
         <key>CFBundleIconFiles</key>
         <array>
         <!--<key>CFBundleIconName</key>-->
-        <string>DevIconAlt1</string>
+        <string>Icon-Alt1</string>
         <!--<string>$(USR_APPICON_ALT1)</string>-->
         </array>
       </dict>

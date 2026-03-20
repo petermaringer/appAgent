@@ -56,6 +56,14 @@ struct ContentView: View {
         ToolbarItem(placement: .bottomBar) {
           Button {
             showingNewProjectSheet = true
+            
+            Task {
+              if UIApplication.shared.supportsAlternateIcons {
+                let current = UIApplication.shared.alternateIconName
+                try? await UIApplication.shared.setAlternateIconName(current == "Alt1" ? nil : "Alt1")
+              }
+            }
+            
           } label: {
             Text("Neues Projekt")
               .fontWeight(.semibold)

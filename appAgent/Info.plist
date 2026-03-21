@@ -18,11 +18,11 @@
     </dict>
     <key>CFBundleAlternateIcons</key>
     <dict>
-      <key>Alt1v3</key>
+      <key>Alt1v4</key>
       <dict>
         <key>CFBundleIconName</key>
-        <string>DevIconAlt1</string>
-        <!--<string>$(USR_APPICON_ALT1)</string>-->
+        <!--<string>DevIconAlt1</string>-->
+        <string>$(USR_APPICON_ALT1)</string>
         <!--<key>CFBundleIconFiles</key>
         <array>
           <string>Icon-Alt1</string>
